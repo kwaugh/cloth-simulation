@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Renderer: " << renderer << "\n";
     std::cout << "OpenGL version supported:" << version << "\n";
 
-    g_menger->set_nesting_level(1);
+    g_menger->set_nesting_level(0);
     g_menger->generate_geometry(obj_vertices, obj_faces);
     g_menger->set_clean();
 
