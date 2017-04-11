@@ -29,7 +29,6 @@ void Menger::set_clean() {
 // FIXME generate Menger sponge geometry
 void Menger::generate_geometry(vector<vec4>& obj_vertices,
         vector<uvec3>& obj_faces) const {
-
     switch (mode) {
         case 0:
             draw_cube(obj_vertices, obj_faces, dvec3(-0.5), dvec3(0.5), nesting_level_);
@@ -37,10 +36,12 @@ void Menger::generate_geometry(vector<vec4>& obj_vertices,
         case 1:
             draw_pyramid(obj_vertices, obj_faces, dvec3(1, 1, 1),  dvec3(1, -1, -1), dvec3(-1, 1, -1), dvec3(-1, -1, 1), nesting_level_);
             break;
+        case 2:
+            draw_inverse_cube(obj_vertices, obj_faces, dvec3(-0.5), dvec3(0.5), nesting_level_);
+            break;;
         //TODO: draw a sphere here instead?
-        //case 2:
-            //draw_inverse_cube(obj_vertices, obj_faces, dvec3(-0.5), dvec3(0.5), nesting_level_);
-            //break;;
+        case 3:
+            break;
     }
 }
 
@@ -51,7 +52,7 @@ void Menger::draw_pyramid(vector<vec4>& obj_vertices,
         dvec3 c,
         dvec3 d,
         int depth) const {
-    if(depth == -1) {
+    if (depth == 0) {
         uint sz = obj_vertices.size();
         obj_vertices.push_back(vec4(a, 1.0));
         obj_vertices.push_back(vec4(b, 1.0));
@@ -125,7 +126,7 @@ void Menger::draw_cube(vector<vec4>& obj_vertices,
 
 void Menger::draw_inverse_cube(vector<vec4>& obj_vertices,
         vector<uvec3>& obj_faces, dvec3 minN, dvec3 maxN, int depth) const {
-    if (depth == -1) {
+    if (depth == 0) {
         uint sz = obj_vertices.size();
         obj_vertices.push_back(vec4(minN[0], maxN[1], maxN[2], 1.0)); /* a */
         obj_vertices.push_back(vec4(minN[0], maxN[1], minN[2], 1.0)); /* b */
@@ -135,7 +136,6 @@ void Menger::draw_inverse_cube(vector<vec4>& obj_vertices,
         obj_vertices.push_back(vec4(minN[0], minN[1], minN[2], 1.0)); /* f */
         obj_vertices.push_back(vec4(maxN[0], minN[1], minN[2], 1.0)); /* g */
         obj_vertices.push_back(vec4(maxN[0], minN[1], maxN[2], 1.0)); /* h */
-
 
         obj_faces.push_back(sz + uvec3(0, 2, 1));  /*top*/
         obj_faces.push_back(sz + uvec3(0, 3, 2));
@@ -149,7 +149,6 @@ void Menger::draw_inverse_cube(vector<vec4>& obj_vertices,
         obj_faces.push_back(sz + uvec3(1, 4, 0));
         obj_faces.push_back(sz + uvec3(4, 6, 7)); /* bottom */
         obj_faces.push_back(sz + uvec3(4, 5, 6));
-
     } else {
         for(uint i = 0; i < 3; i++) {
             for(uint j = 0; j < 3; j++) {
@@ -164,7 +163,6 @@ void Menger::draw_inverse_cube(vector<vec4>& obj_vertices,
                         dvec3 nextMin(minN[0] + size*i    , minN[1] + size*j    , minN[2] + size*k    );
                         dvec3 nextMax(minN[0] + size*(i+1), minN[1] + size*(j+1), minN[2] + size*(k+1));
                         draw_cube(obj_vertices, obj_faces, nextMin, nextMax, depth-1);
-
                     }
                 }
             }
