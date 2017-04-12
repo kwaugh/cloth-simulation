@@ -2,6 +2,7 @@ R"zzz(#version 330 core
 flat in vec4 normal;
 flat in vec4 world_normal;
 in vec4 light_direction;
+in bool gl_FrontFacing;
 out vec4 fragment_color;
 void main()
 {

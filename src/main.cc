@@ -12,7 +12,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <debuggl.h>
-#include "menger.h"
+#include "cloth.h"
 #include "camera.h"
 
 using namespace std;
@@ -28,8 +28,8 @@ enum { kGeometryVao, kFloorVao, kNumVaos };
 GLuint g_array_objects[kNumVaos];  // This will store the VAO descriptors.
 GLuint g_buffer_objects[kNumVaos][kNumVbos];  // These will store VBO descriptors.
 
-std::vector<glm::vec4> obj_vertices;
-std::vector<glm::uvec3> obj_faces;
+vector<glm::vec4> obj_vertices;
+vector<glm::uvec3> obj_faces;
 
 /*
 // Input vertex data, different for all executions of this shader.
@@ -61,8 +61,8 @@ const char* floor_fragment_shader =
 #include "shaders/floor.frag"
 ;
 
-void CreateTriangle(std::vector<glm::vec4>& vertices,
-        std::vector<glm::uvec3>& indices) {
+void CreateTriangle(vector<glm::vec4>& vertices,
+        vector<glm::uvec3>& indices) {
     uint sz = vertices.size();
     // vertices.push_back(glm::vec4(-0.5f, 0.5f, -2.5f, 1.0f));
     // vertices.push_back(glm::vec4(0.5f, -0.5f, -2.5f, 1.0f));
@@ -75,8 +75,8 @@ void CreateTriangle(std::vector<glm::vec4>& vertices,
 }
 
 void SaveObj() {
-    std::ofstream ofs;
-    ofs.open ("geometry.obj", std::ofstream::out | std::ofstream::trunc);
+    ofstream ofs;
+    ofs.open ("geometry.obj", ofstream::out | ofstream::trunc);
     for (uint i = 0; i < obj_vertices.size(); i++) {
         ofs << "v " << obj_vertices[i].x << " " << obj_vertices[i].y << " " <<
             obj_vertices[i].z << "\n";
@@ -91,10 +91,10 @@ void SaveObj() {
 }
 
 void ErrorCallback(int error, const char* description) {
-    std::cerr << "GLFW Error " << error << ": " << description << "\n";
+    cerr << "GLFW Error " << error << ": " << description << "\n";
 }
 
-std::shared_ptr<Menger> g_menger;
+shared_ptr<Cloth> g_cloth;
 Camera g_camera;
 
 
@@ -136,21 +136,6 @@ void KeyCallback(GLFWwindow* window,
         g_camera.toggle_fps();
     } else if (key == GLFW_KEY_L && action == GLFW_RELEASE) {
         g_camera.acceleration_toggle();
-    }
-    if (!g_menger)
-        return ; // 0-4 only available in Menger mode.
-    if (key == GLFW_KEY_0 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(0);
-    } else if (key == GLFW_KEY_1 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(1);
-    } else if (key == GLFW_KEY_2 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(2);
-    } else if (key == GLFW_KEY_3 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(3);
-    } else if (key == GLFW_KEY_4 && action != GLFW_RELEASE) {
-        g_menger->set_nesting_level(4);
-    } else if (key == GLFW_KEY_M && action != GLFW_RELEASE) {
-        g_menger->iterate_mode();
     }
 }
 
@@ -195,9 +180,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 }
 
 int main(int argc, char* argv[]) {
-    std::string window_title = "Cloth";
+    string window_title = "Cloth";
     if (!glfwInit()) exit(EXIT_FAILURE);
-    g_menger = std::make_shared<Menger>();
+    g_cloth = make_shared<Cloth>();
     glfwSetErrorCallback(ErrorCallback);
 
     // Ask an OpenGL 3.3 core profile context
@@ -220,12 +205,10 @@ int main(int argc, char* argv[]) {
     glfwSwapInterval(1);
     const GLubyte* renderer = glGetString(GL_RENDERER);  // get renderer string
     const GLubyte* version = glGetString(GL_VERSION);    // version as a string
-    std::cout << "Renderer: " << renderer << "\n";
-    std::cout << "OpenGL version supported:" << version << "\n";
+    cout << "Renderer: " << renderer << "\n";
+    cout << "OpenGL version supported:" << version << "\n";
 
-    g_menger->set_nesting_level(0);
-    g_menger->generate_geometry(obj_vertices, obj_faces);
-    g_menger->set_clean();
+    g_cloth->generate_geometry(obj_vertices, obj_faces);
 
     // Setup our VAO array.
     CHECK_GL_ERROR(glGenVertexArrays(kNumVaos, &g_array_objects[0]));
@@ -258,8 +241,8 @@ int main(int argc, char* argv[]) {
 
     // FIXME: load the floor into g_buffer_objects[kFloorVao][*],
     //        and bind these VBO to g_array_objects[kFloorVao]
-    std::vector<glm::vec4> floor_vertices;
-    std::vector<glm::uvec3> floor_faces;
+    vector<glm::vec4> floor_vertices;
+    vector<glm::uvec3> floor_faces;
     floor_vertices.push_back(glm::vec4(0.0f,-2.0f,0.0f,1.0f));
     floor_vertices.push_back(glm::vec4(-10000.0f,-2.0f,-10000.0f,1.0f)); // Far Left
     floor_vertices.push_back(glm::vec4(-10000.0f,-2.0f,10000.0f,1.0f)); // Back Left
@@ -384,13 +367,6 @@ int main(int argc, char* argv[]) {
 
         // Switch to the Geometry VAO.
         CHECK_GL_ERROR(glBindVertexArray(g_array_objects[kGeometryVao]));
-
-        if (g_menger && g_menger->is_dirty()) {
-            obj_vertices.clear();
-            obj_faces.clear();
-            g_menger->generate_geometry(obj_vertices, obj_faces);
-            g_menger->set_clean();
-        }
 
         // Compute the projection matrix.
         aspect = static_cast<float>(window_width) / window_height;
