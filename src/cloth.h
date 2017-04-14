@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-#include <Eigen/Core>
+#include <../src/eigen/Eigen/Core>
 #include <glm/glm.hpp>
 
 using namespace Eigen;
