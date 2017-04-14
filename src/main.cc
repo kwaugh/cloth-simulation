@@ -182,10 +182,10 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 int main(int argc, char* argv[]) {
     string window_title = "Cloth";
     if (!glfwInit()) exit(EXIT_FAILURE);
-    g_cloth = make_shared<Cloth>("../src/resources/cloth.node",
-            "../src/resources/cloth.ele", .001, Vector3d(0, 0, 2));
-    //g_cloth = make_shared<Cloth>("../src/resources/cloth.1.node",
-            //"../src/resources/cloth.1.ele", .001, Vector3d(0, 0, 2));
+    /* g_cloth = make_shared<Cloth>("../src/resources/cloth.node", */
+    /*         "../src/resources/cloth.ele", 1, Vector3d(0, 0, 1)); */
+    g_cloth = make_shared<Cloth>("../src/resources/cloth.1.node",
+            "../src/resources/cloth.1.ele", 1, Vector3d(0, 0, 1));
     glfwSetErrorCallback(ErrorCallback);
 
     // Ask an OpenGL 3.3 core profile context

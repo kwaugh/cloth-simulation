@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <../src/eigen/Eigen/Core>
+#include <../src/eigen/Eigen/Geometry>
 #include <glm/glm.hpp>
 
 using namespace Eigen;

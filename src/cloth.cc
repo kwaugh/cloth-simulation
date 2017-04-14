@@ -20,12 +20,10 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     double a, b;
     for (int i = 0; i < numVerts; i++) {
         nodeIfs >> naeem >> a >> b;
-        //V.row(i) = Vector3d(a, b, 0) * scale / 2;
-        //Vector3d translation(scale / 2 + startPos[0],
-                //scale / 2 + startPos[1],
-                //startPos[2]);
-        V.row(i) = Vector3d(a, b, 1) * scale;
-        //V.row(i) += translation;
+        /* /1* V.row(i) = Vector3d(a, 1, b); *1/ */
+        V(i, 0) = (a+1+startPos[0]) * scale / 2;
+        V(i, 1) = startPos[2];
+        V(i, 2) = (b+1+startPos[1]) * scale / 2;
     }
 
     ifstream eleIfs(eleFilename.c_str());
@@ -37,6 +35,12 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     for (int i = 0; i < numFaces; i++) {
         eleIfs >> naeem >> x >> y >> z;
         F.row(i) = Vector3i(x-1, y-1, z-1);
+        Vector3d norm = (V.row(x-1) - V.row(y-1)).cross(V.row(y-1) - V.row(z-1));
+        if (norm.dot(Vector3d(0, 1, 0)) < 0) {
+            F.row(i) = Vector3i(x-1, z-1, y-1);
+        }
+        cout << norm.dot(Vector3d(0,1,0)) << endl << endl;
+        /* F.row(i) = Vector3i(x, y, z); */
     }
 }
 
