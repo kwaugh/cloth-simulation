@@ -6,6 +6,7 @@
 #include <../src/eigen/Eigen/Core>
 #include <../src/eigen/Eigen/Geometry>
 #include <glm/glm.hpp>
+#include <set>
 
 using namespace Eigen;
 using namespace std;
@@ -18,8 +19,19 @@ public:
     ~Cloth();
     void generate_geometry(vector<glm::vec4>&,
         vector<glm::uvec3>&) const;
-    MatrixX3d V; 
+    MatrixX3d Pos; 
+    MatrixX3d oldPos; 
+    MatrixX3d Vel; 
     MatrixX3i F; 
+    set<int> fixedPoints;
+
+    void buildConfiguration(VectorXd &pos, VectorXd, &vel, VectorXd &oldPos) {
+        // TODO: pack correctly
+    }
+
+    void unpackConfiguration(VectorXd &pos, VectorXd &vel, VectorXd &oldPos) {
+        // TODO: unpack correctly
+    }
 };
 
 #endif

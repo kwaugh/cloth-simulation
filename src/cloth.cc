@@ -18,28 +18,14 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     /* cout << "numVerts: " << numVerts << endl; */
 
     cout << "scale: " << scale << endl;
-    V.resize(numVerts, 3);
+    Pos.resize(numVerts, 3);
     double a, b;
-    double minVertex = 9999999999999;
-    double maxVertex = -9999999999999;
     for (int i = 0; i < numVerts; i++) {
         nodeIfs >> naeem >> a >> b >> naeem;
-        /* /1* V.row(i) = Vector3d(a, 1, b); *1/ */
-        V(i, 0) = (a+1+startPos[0]) * scale / 2.0;
-        V(i, 1) = startPos[2];
-        V(i, 2) = (b+1+startPos[1]) * scale / 2.0;
-        minVertex = std::min(minVertex, (a+1+startPos[0]) * scale / 2);
-        minVertex = std::min(minVertex, startPos[2]);
-        minVertex = std::min(minVertex, (b+1+startPos[1]) * scale / 2);
-        maxVertex = std::max(maxVertex, (a+1+startPos[0]) * scale / 2);
-        maxVertex = std::max(maxVertex, startPos[2]);
-        maxVertex = std::max(maxVertex, (b+1+startPos[1]) * scale / 2);
-        /* minVertex = std::min(minVertex, a); */
-        /* minVertex = std::min(minVertex, b); */
-        /* maxVertex = std::max(maxVertex, a); */
-        /* maxVertex = std::max(maxVertex, b); */
+        Pos(i, 0) = (a+1+startPos[0]) * scale / 2.0;
+        Pos(i, 1) = startPos[2];
+        Pos(i, 2) = (b+1+startPos[1]) * scale / 2.0;
     }
-    cout << "minVertex: " << minVertex << "  maxVertex: " << maxVertex << endl;
 
     ifstream eleIfs(eleFilename.c_str());
     int numFaces;
@@ -50,13 +36,14 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     for (int i = 0; i < numFaces; i++) {
         eleIfs >> naeem >> x >> y >> z;
         F.row(i) = Vector3i(x-1, y-1, z-1);
-        Vector3d norm = (V.row(x-1) - V.row(y-1)).cross(V.row(y-1) - V.row(z-1));
+        Vector3d norm = (Pos.row(x-1)-Pos.row(y-1)).cross(Pos.row(y-1)-Pos.row(z-1));
         if (norm.dot(Vector3d(0, 1, 0)) < 0) {
             F.row(i) = Vector3i(x-1, z-1, y-1);
         }
         /* cout << norm.dot(Vector3d(0,1,0)) << endl << endl; */
         /* F.row(i) = Vector3i(x, y, z); */
     }
+    oldPos.setZero();
 }
 
 Cloth::~Cloth() { }
@@ -65,8 +52,8 @@ void Cloth::generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces) const {
     obj_vertices.clear();
     obj_faces.clear();
-    for (uint i = 0; i < V.rows(); i++) {
-        Vector3d row = V.row(i);
+    for (uint i = 0; i < Pos.rows(); i++) {
+        Vector3d row = Pos.row(i);
         /* cout << "row: " << row << endl; */
         obj_vertices.push_back(glm::vec4(row[0], row[1], row[2], 1.0));
     }
