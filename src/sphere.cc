@@ -14,7 +14,7 @@ Sphere::Sphere(const string &nodeFilename, const string &eleFilename,
     int naeem; // dummy variable
     int numVerts;
     nodeIfs >> numVerts >> naeem >> naeem >> naeem;
-    cout << "numVerts: " << numVerts << endl;
+    /* cout << "numVerts: " << numVerts << endl; */
 
     V.resize(numVerts, 3);
     double a, b, c;
@@ -28,7 +28,7 @@ Sphere::Sphere(const string &nodeFilename, const string &eleFilename,
     ifstream eleIfs(eleFilename.c_str());
     int numFaces;
     eleIfs >> numFaces >> naeem >> naeem;
-    cout << "numFaces: " << numFaces << endl;
+    /* cout << "numFaces: " << numFaces << endl; */
     F.resize(numFaces, 3);
     int x, y, z;
     for (int i = 0; i < numFaces; i++) {
@@ -49,16 +49,21 @@ void Sphere::generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces) const {
     /* obj_vertices.clear(); */
     /* obj_faces.clear(); */
+    int offset = obj_vertices.size();
     for (uint i = 0; i < V.rows(); i++) {
         Vector3d row = V.row(i);
-        cout << "row: " << row << endl;
+        /* cout << "row: " << row << endl; */
         obj_vertices.push_back(glm::vec4(row[0], row[1], row[2], 1.0));
     }
     for (uint i = 0; i < F.rows(); i++) {
         Vector3i face = F.row(i);
-        cout << "face: " << face << endl;
-        obj_faces.push_back(glm::uvec3(face[0], face[1], face[2]));
+        /* cout << "face: " << face << endl; */
+        obj_faces.push_back(glm::uvec3(
+                    offset + face[0],
+                    offset + face[1],
+                    offset + face[2]
+        ));
     }
-    cout << "obj_vertices.length(): " << obj_vertices.size() << endl;
-    cout << "obj_faces.length(): " << obj_faces.size() << endl;
+    /* cout << "obj_vertices.length(): " << obj_vertices.size() << endl; */
+    /* cout << "obj_faces.length(): " << obj_faces.size() << endl; */
 }

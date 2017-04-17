@@ -215,7 +215,7 @@ int main(int argc, char* argv[]) {
     cout << "Renderer: " << renderer << "\n";
     cout << "OpenGL version supported:" << version << "\n";
 
-    /* g_cloth->generate_geometry(obj_vertices, obj_faces); */
+    g_cloth->generate_geometry(obj_vertices, obj_faces);
     g_sphere->generate_geometry(obj_vertices, obj_faces);
 
     // Setup our VAO array.
