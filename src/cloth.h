@@ -1,5 +1,5 @@
-#ifndef MENGER_H
-#define MENGER_H
+#ifndef CLOTH_H
+#define CLOTH_H
 
 #include <vector>
 #include <string>

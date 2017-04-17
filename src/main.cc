@@ -13,6 +13,7 @@
 #include <GLFW/glfw3.h>
 #include <debuggl.h>
 #include "cloth.h"
+#include "sphere.h"
 #include "camera.h"
 
 using namespace std;
@@ -95,6 +96,7 @@ void ErrorCallback(int error, const char* description) {
 }
 
 shared_ptr<Cloth> g_cloth;
+shared_ptr<Sphere> g_sphere;
 Camera g_camera;
 
 
@@ -186,6 +188,8 @@ int main(int argc, char* argv[]) {
     /*         "../src/resources/cloth.ele", 1, Vector3d(0, 0, 1)); */
     g_cloth = make_shared<Cloth>("../src/resources/cloth.1.node",
             "../src/resources/cloth.1.ele", 1, Vector3d(0, 0, 1));
+    g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
+            "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
     glfwSetErrorCallback(ErrorCallback);
 
     // Ask an OpenGL 3.3 core profile context
@@ -211,7 +215,8 @@ int main(int argc, char* argv[]) {
     cout << "Renderer: " << renderer << "\n";
     cout << "OpenGL version supported:" << version << "\n";
 
-    g_cloth->generate_geometry(obj_vertices, obj_faces);
+    /* g_cloth->generate_geometry(obj_vertices, obj_faces); */
+    g_sphere->generate_geometry(obj_vertices, obj_faces);
 
     // Setup our VAO array.
     CHECK_GL_ERROR(glGenVertexArrays(kNumVaos, &g_array_objects[0]));
