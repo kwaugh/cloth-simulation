@@ -47,6 +47,37 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     Vel.setZero();
     oldPos.resize(numVerts, 3);
     oldPos.setZero();
+
+    massVec.resize(Pos.rows());
+    for (int i = 0; i < massVec.size(); i++) {
+        massVec[i] = 1;
+    }
+
+    // The mass m_i of particle i is determined by summing one third the mass
+    // of all triangles containing the ith particle. A triangle's mass is the
+    // product of the triangle's fixed area in the uv coords.
+    Minv.resize(Pos.rows() * Pos.cols(), Pos.rows() * Pos.cols());
+
+    vector<Tr> Minvcoeffs;
+    for (int i = 0; i < Pos.rows(); i++) {
+        Minvcoeffs.push_back(Tr(i  , i  , 1.0 / massVec[i])); // make them all 1 for now
+        Minvcoeffs.push_back(Tr(i+1, i+1, 1.0 / massVec[i])); // make them all 1 for now
+        Minvcoeffs.push_back(Tr(i+2, i+2, 1.0 / massVec[i])); // make them all 1 for now
+    }
+    Minv.setFromTriplets(Minvcoeffs.begin(), Minvcoeffs.end());
+
+    // The mass m_i of particle i is determined by summing one third the mass
+    // of all triangles containing the ith particle. A triangle's mass is the
+    // product of the triangle's fixed area in the uv coords.
+    M.resize(Pos.rows() * Pos.cols(), Pos.rows() * Pos.cols());
+
+    vector<Tr> Mcoeffs;
+    for (int i = 0; i < Pos.rows(); i++) {
+        Mcoeffs.push_back(Tr(i  , i  , massVec[i])); // make them all 1 for now
+        Mcoeffs.push_back(Tr(i+1, i+1, massVec[i])); // make them all 1 for now
+        Mcoeffs.push_back(Tr(i+2, i+2, massVec[i])); // make them all 1 for now
+    }
+    M.setFromTriplets(Mcoeffs.begin(), Mcoeffs.end());
 }
 
 Cloth::~Cloth() { }
@@ -105,18 +136,4 @@ void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
         oldPos(i, 1) = qprev[3*i + 1];
         oldPos(i, 2) = qprev[3*i + 2];
     }
-}
-
-void Cloth::computeMassMatrix(SparseMatrix<double> &M) {
-    // The mass m_i of particle i is determeined by summing one third the mass
-    // of all triangles containing the ith particle. A triangle's mass is the
-    // product of the triangle's fixed area in the uv coords.
-    M.resize(Pos.size(), Pos.size());
-    M.setZero();
-
-    vector<Tr> Mcoeffs;
-    for (int i = 0; i < Pos.rows(); i++) {
-        Mcoeffs.push_back(Tr(i, i, 1)); // make them all 1 for now
-    }
-    M.setFromTriplets(Mcoeffs.begin(), Mcoeffs.end());
 }

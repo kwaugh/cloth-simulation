@@ -14,8 +14,11 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <debuggl.h>
+#include <atomic>
 #include "camera.h"
 #include "simulation.h"
+
+#define RENDER_STEPS 20
 
 using namespace std;
 
@@ -32,6 +35,8 @@ GLuint g_buffer_objects[kNumVaos][kNumVbos];  // These will store VBO descriptor
 
 vector<glm::vec4> obj_vertices;
 vector<glm::uvec3> obj_faces;
+
+atomic_bool shouldRender(true);
 
 /*
 // Input vertex data, different for all executions of this shader.
@@ -64,10 +69,12 @@ const char* floor_fragment_shader =
 ;
 
 void takeSteps(shared_ptr<Simulation> sim) {
-    cout << "about to take simulation steps" << endl;
-    for (int i = 0; i < 20; i++) {
-        sim->takeSimulationStep();
-        cout << "taking simulation step" << endl;
+    while (true) {
+        for (int i = 0; i < RENDER_STEPS; i++) {
+            /* cout << "i: " << i << endl; */
+            sim->takeSimulationStep();
+        }
+        shouldRender.store(true);
     }
 }
 
@@ -370,8 +377,7 @@ int main(int argc, char* argv[]) {
     float aspect = 0.0f;
     float theta = 0.0f;
 
-    thread simThread;
-
+    thread simThread(takeSteps, sim);
     while (!glfwWindowShouldClose(window)) {
         // Setup some basic window stuff.
         glfwGetFramebufferSize(window, &window_width, &window_height);
@@ -394,11 +400,14 @@ int main(int argc, char* argv[]) {
         glm::mat4 view_matrix = g_camera.get_view_matrix();
 
         // TODO: only run thread if it's already done
-        simThread = thread(takeSteps, sim);
 
         // Compute the new simulation geometry
         renderLock.lock();
-        sim->generate_geometry(obj_vertices, obj_faces);
+        if (shouldRender.load()) {
+            /* cout << "rendering" << endl; */
+            sim->generate_geometry(obj_vertices, obj_faces);
+            shouldRender.store(false);
+        }
         renderLock.unlock();
 
         // Send vertices to the GPU.

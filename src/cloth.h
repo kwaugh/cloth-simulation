@@ -27,10 +27,15 @@ public:
     MatrixX3d Vel; 
     MatrixX3i F; 
     set<int> fixedPoints;
+    VectorXd massVec;
+    SparseMatrix<double> M;
+    SparseMatrix<double> Minv;
+     
 
     void buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);
     void unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);
-    void computeMassMatrix(SparseMatrix<double> &M);
+    SparseMatrix<double> getMassMatrix() { return M; }
+    SparseMatrix<double> getInverseMassMatrix() { return Minv; }
+    VectorXd getMassVector() { return massVec; }
 };
-
 #endif
