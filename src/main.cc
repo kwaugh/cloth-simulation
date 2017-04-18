@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <mutex>
+#include <thread>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -60,6 +62,14 @@ const char* fragment_shader =
 const char* floor_fragment_shader =
 #include "shaders/floor.frag"
 ;
+
+void takeSteps(shared_ptr<Simulation> sim) {
+    cout << "about to take simulation steps" << endl;
+    for (int i = 0; i < 20; i++) {
+        sim->takeSimulationStep();
+        cout << "taking simulation step" << endl;
+    }
+}
 
 void CreateTriangle(vector<glm::vec4>& vertices,
         vector<glm::uvec3>& indices) {
@@ -179,10 +189,12 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     glfwGetCursorPos(window, &g_mouse_pos.x, &g_mouse_pos.y);
 }
 
+mutex renderLock;
+
 int main(int argc, char* argv[]) {
     string window_title = "Cloth";
     if (!glfwInit()) exit(EXIT_FAILURE);
-    sim = make_shared<Simulation>();
+    sim = make_shared<Simulation>(&renderLock);
     glfwSetErrorCallback(ErrorCallback);
 
     // Ask an OpenGL 3.3 core profile context
@@ -210,7 +222,6 @@ int main(int argc, char* argv[]) {
 
     /* g_cloth->generate_geometry(obj_vertices, obj_faces); */
     /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
-    sim->generate_geometry(obj_vertices, obj_faces);
 
     // Setup our VAO array.
     CHECK_GL_ERROR(glGenVertexArrays(kNumVaos, &g_array_objects[0]));
@@ -358,12 +369,10 @@ int main(int argc, char* argv[]) {
     glm::vec4 light_position = glm::vec4(10.0f, 10.0f, 10.0f, 1.0f);
     float aspect = 0.0f;
     float theta = 0.0f;
+
+    thread simThread;
+
     while (!glfwWindowShouldClose(window)) {
-        cout << "about to take simulation steps" << endl;
-        for (int i = 0; i < 20; i++) {
-            sim->takeSimulationStep();
-            cout << "taking simulation step" << endl;
-        }
         // Setup some basic window stuff.
         glfwGetFramebufferSize(window, &window_width, &window_height);
         glViewport(0, 0, window_width, window_height);
@@ -383,6 +392,14 @@ int main(int argc, char* argv[]) {
 
         // Compute the view matrix
         glm::mat4 view_matrix = g_camera.get_view_matrix();
+
+        // TODO: only run thread if it's already done
+        simThread = thread(takeSteps, sim);
+
+        // Compute the new simulation geometry
+        renderLock.lock();
+        sim->generate_geometry(obj_vertices, obj_faces);
+        renderLock.unlock();
 
         // Send vertices to the GPU.
         CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,

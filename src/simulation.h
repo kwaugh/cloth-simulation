@@ -10,13 +10,14 @@
 #include "cloth.h"
 #include "sphere.h"
 #include <memory>
+#include <mutex>
 
 using namespace Eigen;
 using namespace std;
 
 class Simulation {
 public:
-    Simulation();
+    Simulation(mutex *renderLock);
     ~Simulation();
     void takeSimulationStep();
     void numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev);
@@ -26,6 +27,7 @@ public:
 private:
     shared_ptr<Cloth> g_cloth;
     shared_ptr<Sphere> g_sphere;
+    mutex *renderLock;
 };
 
 #endif

@@ -5,7 +5,7 @@ using namespace std;
 using namespace glm;
 using namespace Eigen;
 
-Simulation::Simulation() {
+Simulation::Simulation(mutex *renderLock) : renderLock(renderLock) {
     /* g_cloth = make_shared<Cloth>("../src/resources/cloth.node", */
     /*         "../src/resources/cloth.ele", 1, Vector3d(0, 0, 1)); */
     g_cloth = make_shared<Cloth>("../src/resources/cloth.1.node",
@@ -29,7 +29,9 @@ void Simulation::takeSimulationStep() {
     cout << "about to do numericalIntegration" << endl;
     numericalIntegration(q, v, qprev);
     cout << "about to unpackConfiguration" << endl;
+    renderLock->lock();
     g_cloth->unpackConfiguration(q, qprev, v);
+    renderLock->unlock();
 }
 
 void Simulation::numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev) {
