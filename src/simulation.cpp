@@ -43,13 +43,9 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
     H.setZero();
     SparseMatrix<double> M = g_cloth->getMassMatrix();
     SparseMatrix<double> Minv = g_cloth->getInverseMassMatrix();
-    /* cout << "top v: " << v << endl; */
-    /* cout << "yo" << endl; */
-    /* MatrixXd denseM = M.toDense(); */
 
     VectorXd guessQ = q;
     for (int i = 0; i < 20; i++) {
-        /* cout << "before f" << endl; */
         VectorXd f = -guessQ
             + q
             + timeStep * v
@@ -64,7 +60,6 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
             q = guessQ;
             break;
         }
-        /* cout << "before matrix solver" << endl; */
         SparseMatrix<double> identity(q.size(), q.size());
         identity.setIdentity();
         SparseMatrix<double> df = -identity
@@ -73,15 +68,11 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
             * computeDF(guessQ);
         BICBOI<SparseMatrix<double>> solver;
         /* SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > solver; */
-        /* cout << "before computation" << endl; */
         solver.compute(df);
-        /* cout << "after compuation" << endl; */
         guessQ -= solver.solve(f);
     }
-    cout << "v: " << v << endl;
     F = computeForce(q, qprev);
     v += timeStep * Minv * F;
-    /* cout << "bottom v: " << v << endl; */
 }
 
 VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {

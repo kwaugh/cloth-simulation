@@ -15,9 +15,7 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     int naeem; // dummy variable
     int numVerts;
     nodeIfs >> numVerts >> naeem >> naeem >> naeem;
-    /* cout << "numVerts: " << numVerts << endl; */
 
-    cout << "scale: " << scale << endl;
     Pos.resize(numVerts, 3);
     double a, b;
     for (int i = 0; i < numVerts; i++) {
@@ -30,7 +28,6 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     ifstream eleIfs(eleFilename.c_str());
     int numFaces;
     eleIfs >> numFaces >> naeem >> naeem;
-    /* cout << "numFaces: " << numFaces << endl; */
     F.resize(numFaces, 3);
     int x, y, z;
     for (int i = 0; i < numFaces; i++) {
@@ -40,7 +37,6 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
         if (norm.dot(Vector3d(0, 1, 0)) < 0) {
             F.row(i) = Vector3i(x-1, z-1, y-1);
         }
-        /* cout << norm.dot(Vector3d(0,1,0)) << endl << endl; */
         /* F.row(i) = Vector3i(x, y, z); */
     }
     Vel.resize(numVerts, 3);
@@ -88,16 +84,12 @@ void Cloth::generate_geometry(vector<glm::vec4>& obj_vertices,
     obj_faces.clear();
     for (uint i = 0; i < Pos.rows(); i++) {
         Vector3d row = Pos.row(i);
-        /* cout << "row: " << row << endl; */
         obj_vertices.push_back(glm::vec4(row[0], row[1], row[2], 1.0));
     }
     for (uint i = 0; i < F.rows(); i++) {
         Vector3i face = F.row(i);
-        /* cout << "face: " << face << endl; */
         obj_faces.push_back(glm::uvec3(face[0], face[1], face[2]));
     }
-    /* cout << "obj_vertices.length(): " << obj_vertices.size() << endl; */
-    /* cout << "obj_faces.length(): " << obj_faces.size() << endl; */
 }
 
 void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
