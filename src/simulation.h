@@ -20,12 +20,12 @@ public:
     Simulation(mutex *renderLock);
     ~Simulation();
     void takeSimulationStep();
-    void numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev);
+    void numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev);
     void generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces);
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
-    double timeStep = .05;
+    double timeStep = .00001;
 
 private:
     shared_ptr<Cloth> g_cloth;

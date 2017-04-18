@@ -56,13 +56,13 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     // The mass m_i of particle i is determined by summing one third the mass
     // of all triangles containing the ith particle. A triangle's mass is the
     // product of the triangle's fixed area in the uv coords.
-    Minv.resize(Pos.rows() * Pos.cols(), Pos.rows() * Pos.cols());
+    Minv.resize(Pos.rows() * 3, Pos.rows() * 3);
 
     vector<Tr> Minvcoeffs;
     for (int i = 0; i < Pos.rows(); i++) {
-        Minvcoeffs.push_back(Tr(i  , i  , 1.0 / massVec[i])); // make them all 1 for now
-        Minvcoeffs.push_back(Tr(i+1, i+1, 1.0 / massVec[i])); // make them all 1 for now
-        Minvcoeffs.push_back(Tr(i+2, i+2, 1.0 / massVec[i])); // make them all 1 for now
+        Minvcoeffs.push_back(Tr(3*i  , 3*i  , 1.0 / massVec[i])); // make them all 1 for now
+        Minvcoeffs.push_back(Tr(3*i+1, 3*i+1, 1.0 / massVec[i])); // make them all 1 for now
+        Minvcoeffs.push_back(Tr(3*i+2, 3*i+2, 1.0 / massVec[i])); // make them all 1 for now
     }
     Minv.setFromTriplets(Minvcoeffs.begin(), Minvcoeffs.end());
 
@@ -73,9 +73,9 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
 
     vector<Tr> Mcoeffs;
     for (int i = 0; i < Pos.rows(); i++) {
-        Mcoeffs.push_back(Tr(i  , i  , massVec[i])); // make them all 1 for now
-        Mcoeffs.push_back(Tr(i+1, i+1, massVec[i])); // make them all 1 for now
-        Mcoeffs.push_back(Tr(i+2, i+2, massVec[i])); // make them all 1 for now
+        Mcoeffs.push_back(Tr(3*i  , 3*i  , massVec[i])); // make them all 1 for now
+        Mcoeffs.push_back(Tr(3*i+1, 3*i+1, massVec[i])); // make them all 1 for now
+        Mcoeffs.push_back(Tr(3*i+2, 3*i+2, massVec[i])); // make them all 1 for now
     }
     M.setFromTriplets(Mcoeffs.begin(), Mcoeffs.end());
 }

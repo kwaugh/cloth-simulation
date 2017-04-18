@@ -23,30 +23,27 @@ Simulation::~Simulation() {}
 void Simulation::generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces) {
     g_cloth->generate_geometry(obj_vertices, obj_faces);
-    /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
+    g_sphere->generate_geometry(obj_vertices, obj_faces);
 }
 
 void Simulation::takeSimulationStep() {
     VectorXd q, v, qprev;
-    /* cout << "about to buildConfiguration" << endl; */
     g_cloth->buildConfiguration(q, v, qprev);
-    /* cout << "about to do numericalIntegration" << endl; */
     numericalIntegration(q, v, qprev);
-    /* cout << "about to unpackConfiguration" << endl; */
     renderLock->lock();
-    g_cloth->unpackConfiguration(q, qprev, v);
+    g_cloth->unpackConfiguration(q, v, qprev);
     renderLock->unlock();
 }
 
-void Simulation::numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev) {
+void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     VectorXd F;
-    SparseMatrix<double> H; // the hessian
-    F.resize(q.size());
     F.setZero();
+    SparseMatrix<double> H; // the hessian
     H.resize(q.size(), q.size());
     H.setZero();
     SparseMatrix<double> M = g_cloth->getMassMatrix();
     SparseMatrix<double> Minv = g_cloth->getInverseMassMatrix();
+    /* cout << "top v: " << v << endl; */
     /* cout << "yo" << endl; */
     /* MatrixXd denseM = M.toDense(); */
 
@@ -63,6 +60,7 @@ void Simulation::numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev) {
               );
         double residual = f.norm();
         if (residual < 1e-8) {
+            /* qprev = q; */
             q = guessQ;
             break;
         }
@@ -80,8 +78,10 @@ void Simulation::numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev) {
         /* cout << "after compuation" << endl; */
         guessQ -= solver.solve(f);
     }
-    cout << q << endl;
+    cout << "v: " << v << endl;
+    F = computeForce(q, qprev);
     v += timeStep * Minv * F;
+    /* cout << "bottom v: " << v << endl; */
 }
 
 VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
@@ -99,7 +99,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     /*     F[i] += -9.8 * denseM(i/3, i/3); //this should be int div */
     /* } */
     for (int i = 1; i < q.size(); i+=3) {
-        F[i] += -9.8 * massVec[1]; 
+        F[i] += -9.8 * massVec[i / 3]; 
     }
 
     /* damping */
