@@ -359,8 +359,10 @@ int main(int argc, char* argv[]) {
     float aspect = 0.0f;
     float theta = 0.0f;
     while (!glfwWindowShouldClose(window)) {
+        cout << "about to take simulation steps" << endl;
         for (int i = 0; i < 20; i++) {
             sim->takeSimulationStep();
+            cout << "taking simulation step" << endl;
         }
         // Setup some basic window stuff.
         glfwGetFramebufferSize(window, &window_width, &window_height);

@@ -1,4 +1,5 @@
 #include "simulation.h"
+#include <iostream>
 
 using namespace std;
 using namespace glm;
@@ -22,5 +23,35 @@ void Simulation::generate_geometry(vector<glm::vec4>& obj_vertices,
 }
 
 void Simulation::takeSimulationStep() {
+    VectorXd q, v, qprev;
+    cout << "about to buildConfiguration" << endl;
+    g_cloth->buildConfiguration(q, v, qprev);
+    cout << "about to do numericalIntegration" << endl;
+    numericalIntegration(q, v, qprev);
+    cout << "about to unpackConfiguration" << endl;
+    g_cloth->unpackConfiguration(q, qprev, v);
+}
 
+void Simulation::numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev) {
+    VectorXd F;
+    SparseMatrix<double> H; // the hessian
+    F.resize(q.size());
+    F.setZero();
+    H.resize(q.size(), q.size());
+    H.setZero();
+    SparseMatrix<double> M;
+    g_cloth->computeMassMatrix(M);
+    MatrixXd denseM = M.toDense();
+    // stretch forces
+
+    // shear and bend forces
+
+    // gravity
+    // TODO: allow for fixed particles
+    // iterate through the y coords
+    for (int i = 1; i < q.size() / 3; i += 3) {
+        F[i] += -9.8 * denseM(i/3, i/3); //this should be int div
+    }
+
+    // damping
 }

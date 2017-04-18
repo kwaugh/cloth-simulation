@@ -3,8 +3,9 @@
 
 #include <vector>
 #include <string>
-#include <../src/eigen/Eigen/Core>
-#include <../src/eigen/Eigen/Geometry>
+#include "../src/eigen/Eigen/Core"
+#include "../src/eigen/Eigen/Geometry"
+#include "../src/eigen/Eigen/Sparse"
 #include <glm/glm.hpp>
 #include "cloth.h"
 #include "sphere.h"
@@ -18,6 +19,7 @@ public:
     Simulation();
     ~Simulation();
     void takeSimulationStep();
+    void numericalIntegration(VectorXd q, VectorXd v, VectorXd qprev);
     void generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces);
 

@@ -43,6 +43,9 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
         /* cout << norm.dot(Vector3d(0,1,0)) << endl << endl; */
         /* F.row(i) = Vector3i(x, y, z); */
     }
+    Vel.resize(numVerts, 3);
+    Vel.setZero();
+    oldPos.resize(numVerts, 3);
     oldPos.setZero();
 }
 
@@ -64,4 +67,56 @@ void Cloth::generate_geometry(vector<glm::vec4>& obj_vertices,
     }
     /* cout << "obj_vertices.length(): " << obj_vertices.size() << endl; */
     /* cout << "obj_faces.length(): " << obj_faces.size() << endl; */
+}
+
+void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
+    q.resize(Pos.rows() * Pos.cols());
+    v.resize(Pos.rows() * Pos.cols());
+    qprev.resize(Pos.rows() * Pos.cols());
+    for (int i = 0; i < Pos.rows(); i++) {
+        q[3*i] = Pos(i, 0);
+        q[3*i + 1] = Pos(i, 1);
+        q[3*i + 2] = Pos(i, 2);
+    }
+    for (int i = 0; i < Vel.rows(); i++) {
+        v[3*i] = Vel(i, 0);
+        v[3*i + 1] = Vel(i, 1);
+        v[3*i + 2] = Vel(i, 2);
+    }
+    for (int i = 0; i < oldPos.rows(); i++) {
+        qprev[3*i] = oldPos(i, 0);
+        qprev[3*i + 1] = oldPos(i, 1);
+        qprev[3*i + 2] = oldPos(i, 2);
+    }
+}
+void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
+    for (int i = 0; i < Pos.rows(); i++) {
+        Pos(i, 0) = q[3*i];
+        Pos(i, 1) = q[3*i + 1];
+        Pos(i, 2) = q[3*i + 2];
+    }
+    for (int i = 0; i < Vel.rows(); i++) {
+        Vel(i, 0) = v[3*i];
+        Vel(i, 1) = v[3*i + 1];
+        Vel(i, 2) = v[3*i + 2];
+    }
+    for (int i = 0; i < oldPos.rows(); i++) {
+        oldPos(i, 0) = qprev[3*i];
+        oldPos(i, 1) = qprev[3*i + 1];
+        oldPos(i, 2) = qprev[3*i + 2];
+    }
+}
+
+void Cloth::computeMassMatrix(SparseMatrix<double> &M) {
+    // The mass m_i of particle i is determeined by summing one third the mass
+    // of all triangles containing the ith particle. A triangle's mass is the
+    // product of the triangle's fixed area in the uv coords.
+    M.resize(Pos.size(), Pos.size());
+    M.setZero();
+
+    vector<Tr> Mcoeffs;
+    for (int i = 0; i < Pos.rows(); i++) {
+        Mcoeffs.push_back(Tr(i, i, 1)); // make them all 1 for now
+    }
+    M.setFromTriplets(Mcoeffs.begin(), Mcoeffs.end());
 }

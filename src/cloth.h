@@ -3,13 +3,16 @@
 
 #include <vector>
 #include <string>
-#include <../src/eigen/Eigen/Core>
-#include <../src/eigen/Eigen/Geometry>
+#include "../src/eigen/Eigen/Core"
+#include "../src/eigen/Eigen/Geometry"
+#include "../src/eigen/Eigen/Sparse"
 #include <glm/glm.hpp>
 #include <set>
 
 using namespace Eigen;
 using namespace std;
+
+typedef Eigen::Triplet<double> Tr;
 
 class Cloth {
 public:
@@ -25,13 +28,9 @@ public:
     MatrixX3i F; 
     set<int> fixedPoints;
 
-    void buildConfiguration(VectorXd &pos, VectorXd, &vel, VectorXd &oldPos) {
-        // TODO: pack correctly
-    }
-
-    void unpackConfiguration(VectorXd &pos, VectorXd &vel, VectorXd &oldPos) {
-        // TODO: unpack correctly
-    }
+    void buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);
+    void unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);
+    void computeMassMatrix(SparseMatrix<double> &M);
 };
 
 #endif
