@@ -25,12 +25,13 @@ public:
         vector<glm::uvec3>& obj_faces);
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
-    double timeStep = .00001;
+    double timeStep = .001;
 
 private:
     shared_ptr<Cloth> g_cloth;
     shared_ptr<Sphere> g_sphere;
     mutex *renderLock;
+    double grav = 9.81;
 };
 
 #endif

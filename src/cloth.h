@@ -23,9 +23,11 @@ public:
     void generate_geometry(vector<glm::vec4>&,
         vector<glm::uvec3>&) const;
     MatrixX3d Pos; 
+    MatrixX2d V; 
     MatrixX3d oldPos; 
     MatrixX3d Vel; 
     MatrixX3i F; 
+    VectorXd A;
     set<int> fixedPoints;
     VectorXd massVec;
     SparseMatrix<double> M;
@@ -37,5 +39,11 @@ public:
     SparseMatrix<double> getMassMatrix() { return M; }
     SparseMatrix<double> getInverseMassMatrix() { return Minv; }
     VectorXd getMassVector() { return massVec; }
+
+    static constexpr double density = 0.1;
+    static constexpr double kstretch = 5.0e3;
+    static constexpr double kshear = 0.5e3;
+    static constexpr double kbend = 0.01e-3;
+    static constexpr double kdamp = 0.2;
 };
 #endif

@@ -17,12 +17,18 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     nodeIfs >> numVerts >> naeem >> naeem >> naeem;
 
     Pos.resize(numVerts, 3);
+    V.resize(numVerts, 2);
     double a, b;
     for (int i = 0; i < numVerts; i++) {
         nodeIfs >> naeem >> a >> b >> naeem;
         Pos(i, 0) = (a+1+startPos[0]) * scale / 2.0;
         Pos(i, 1) = startPos[2];
         Pos(i, 2) = (b+1+startPos[1]) * scale / 2.0;
+        /* Pos(i, 0) = a; */
+        /* Pos(i, 1) = startPos[2]; */
+        /* Pos(i, 2) = b; */
+        V(i, 0) = a * scale / 2.0; /* TODO: is this valid to mult by scale? */
+        V(i, 1) = b * scale / 2.0;
     }
 
     ifstream eleIfs(eleFilename.c_str());
@@ -44,9 +50,23 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     oldPos.resize(numVerts, 3);
     oldPos.setZero();
 
-    massVec.resize(Pos.rows());
-    for (int i = 0; i < massVec.size(); i++) {
-        massVec[i] = 1;
+    massVec.resize(numVerts);
+    massVec.setZero();
+    A.resize(F.rows());
+    /* for (int i = 0; i < massVec.size(); i++) { */
+    /*     massVec[i] = 1; */
+    /* } */
+    for (int i = 0; i < F.rows(); i++) {
+        Vector3d a, b, c;
+        a = Pos.row(F(i, 0));
+        b = Pos.row(F(i, 1));
+        c = Pos.row(F(i, 2));
+        double area = .5 * (b-a).cross(c-a).norm();
+        A[i] = area;
+        double mass = area * density;
+        massVec[F(i, 0)] += mass / 3;
+        massVec[F(i, 1)] += mass / 3;
+        massVec[F(i, 2)] += mass / 3;
     }
 
     // The mass m_i of particle i is determined by summing one third the mass

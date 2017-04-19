@@ -8,12 +8,14 @@ using namespace glm;
 using namespace Eigen;
 
 Simulation::Simulation(mutex *renderLock) : renderLock(renderLock) {
-    g_cloth = make_shared<Cloth>("../src/resources/cloth.node",
-            "../src/resources/cloth.ele", 1, Vector3d(0, 0, 1));
+    /* g_cloth = make_shared<Cloth>("../src/resources/cloth.node", */
+    /*         "../src/resources/cloth.ele", 1, Vector3d(0, 0, 1)); */
     /* g_cloth = make_shared<Cloth>("../src/resources/cloth.2.node", */
     /*         "../src/resources/cloth.2.ele", 1, Vector3d(0, 0, 1)); */
     /* g_cloth = make_shared<Cloth>("../src/resources/cloth.1.node", */
     /*         "../src/resources/cloth.1.ele", 1, Vector3d(0, 0, 1)); */
+    g_cloth = make_shared<Cloth>("../src/resources/cloth.3.node",
+            "../src/resources/cloth.3.ele", 1, Vector3d(0, 0, 1));
     g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
             "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
 }
@@ -71,15 +73,58 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         solver.compute(df);
         guessQ -= solver.solve(f);
     }
+    /* q += timeStep * v; */ // velocity verlet
     F = computeForce(q, qprev);
     v += timeStep * Minv * F;
 }
 
 VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
-    VectorXd F(q.size());
-    F.setZero();
+    VectorXd Force_Stretch(q.size());
+    Force_Stretch.setZero();
     VectorXd massVec = g_cloth->getMassVector();
     /* stretch forces */
+    auto F = g_cloth->F;
+    for (int i = 0; i < F.rows(); i++) {
+        Vector3d x0 = g_cloth->Pos.row(F(i, 0));
+        Vector3d x1 = g_cloth->Pos.row(F(i, 1));
+        Vector3d x2 = g_cloth->Pos.row(F(i, 2));
+        double deltau1 = g_cloth->V(F(i, 1), 0) - g_cloth->V(F(i, 0), 0);
+        double deltau2 = g_cloth->V(F(i, 2), 0) - g_cloth->V(F(i, 0), 0);
+        double deltav1 = g_cloth->V(F(i, 1), 1) - g_cloth->V(F(i, 0), 1);
+        double deltav2 = g_cloth->V(F(i, 2), 1) - g_cloth->V(F(i, 0), 1);
+        double alpha = pow(g_cloth->A[i], .75);
+        Vector3d w_u = ((x1 - x0) * deltav2 - (x2 - x0) * deltav1)
+            / (deltau1 * deltav2 - deltau2 * deltav1);
+        Vector3d w_v = (-(x1 - x0) * deltau2 + (x2 - x0) * deltau1)
+            / (deltau1 * deltav2 - deltau2 * deltav1);
+        MatrixX3d dwdxx(2, 3);
+        dwdxx.setZero();
+        dwdxx(0, 0) = (deltav1 - deltav2) / (deltau1 * deltav2 - deltau2 * deltav1);
+        dwdxx(0, 1) = (deltav2)           / (deltau1 * deltav2 - deltau2 * deltav1);
+        dwdxx(0, 2) = (-deltav1)          / (deltau1 * deltav2 - deltau2 * deltav1);
+        dwdxx(1, 0) = (deltau2 - deltau1) / (deltau1 * deltav2 - deltau2 * deltav1);
+        dwdxx(1, 1) = (-deltau2)          / (deltau1 * deltav2 - deltau2 * deltav1);
+        dwdxx(1, 2) = (deltau1)           / (deltau1 * deltav2 - deltau2 * deltav1);
+
+        Vector2d C;
+        C[0] = alpha * (w_u.norm() - 1);
+        C[1] = alpha * (w_v.norm() - 1);
+        Vector3d dCudx0 = alpha * dwdxx(0, 0) * w_u.normalized();
+        Vector3d dCudx1 = alpha * dwdxx(0, 1) * w_u.normalized();
+        Vector3d dCudx2 = alpha * dwdxx(0, 2) * w_u.normalized();
+
+        Vector3d dCvdx0 = alpha * dwdxx(1, 0) * w_v.normalized();
+        Vector3d dCvdx1 = alpha * dwdxx(1, 1) * w_v.normalized();
+        Vector3d dCvdx2 = alpha * dwdxx(1, 2) * w_v.normalized();
+
+        Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
+        Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
+        Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
+        Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
+        Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
+        Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
+        /* cout << "Force_Stretch: " << Force_Stretch << endl; */
+    }
 
     /* shear and bend forces */
 
@@ -89,12 +134,14 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     /* for (int i = 1; i < q.size(); i += 3) { */
     /*     F[i] += -9.8 * denseM(i/3, i/3); //this should be int div */
     /* } */
+    /* VectorXd Force_Gravity(q.size()); */
+    /* Force_Gravity.setZero(); */
     for (int i = 1; i < q.size(); i+=3) {
-        F[i] += -9.8 * massVec[i / 3]; 
+        Force_Stretch[i] += -grav * massVec[i / 3]; 
     }
 
     /* damping */
-    return F;
+    return Force_Stretch;
 }
 
 MatrixXd Simulation::computeDF(VectorXd q) {
