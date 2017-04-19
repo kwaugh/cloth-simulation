@@ -120,13 +120,11 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
         q[3*i] = Pos(i, 0);
         q[3*i + 1] = Pos(i, 1);
         q[3*i + 2] = Pos(i, 2);
-    }
-    for (int i = 0; i < Vel.rows(); i++) {
+
         v[3*i] = Vel(i, 0);
         v[3*i + 1] = Vel(i, 1);
         v[3*i + 2] = Vel(i, 2);
-    }
-    for (int i = 0; i < oldPos.rows(); i++) {
+
         qprev[3*i] = oldPos(i, 0);
         qprev[3*i + 1] = oldPos(i, 1);
         qprev[3*i + 2] = oldPos(i, 2);
@@ -134,16 +132,15 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
 }
 void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     for (int i = 0; i < Pos.rows(); i++) {
+        if (i == 23) continue; // fixed verts
         Pos(i, 0) = q[3*i];
         Pos(i, 1) = q[3*i + 1];
         Pos(i, 2) = q[3*i + 2];
-    }
-    for (int i = 0; i < Vel.rows(); i++) {
+
         Vel(i, 0) = v[3*i];
         Vel(i, 1) = v[3*i + 1];
         Vel(i, 2) = v[3*i + 2];
-    }
-    for (int i = 0; i < oldPos.rows(); i++) {
+
         oldPos(i, 0) = qprev[3*i];
         oldPos(i, 1) = qprev[3*i + 1];
         oldPos(i, 2) = qprev[3*i + 2];
