@@ -149,13 +149,35 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
         /* bending */ {
             for (int j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
                 int i2 = g_cloth->adjacentFaces[i][j];
+                int unique_i_point = 0;
+                int unique_j_point = 0;
+                for (int x = 0; x < 3; x++) {
+                    if (F(j, 0) != F(i, x) && 
+                        F(j, 1) != F(i, x) &&
+                        F(j, 2) != F(i, x)) {
+                        unique_i_point = x;
+                    }
+                    if (F(i, 0) != F(j, x) && 
+                        F(i, 1) != F(j, x) &&
+                        F(i, 2) != F(j, x)) {
+                        unique_j_point = x;
+                    }
+                }
 
+                Vector3d x0 = V.row(F(i, unique_i_point));
+                Vector3d x1 = V.row(F(i, (unique_i_point+1)%3));
+                Vector3d x2 = V.row(F(i, (unique_i_point+2)%3));
+                Vector3d x3 = V.row(F(j, unique_j_point));
+                
+                Vector3d nA = (x2 - x0).cross(x1 - x0);
+                Vector3d nB = (x1 - x3).cross(x2 - x3);
+                Vector3d e = x1 - x2;
+                double theta = atan2((nA.normalized().cross(nB.normalized()).dot(e.normalized())) / (nA.normalized().dot(nB.normalized())));
+                double C = theta;
             }
         }
     }
     /* cout << "Stretch: " << Force_Stretch.segment<3>(0) << endl; */
-
-    /* shear and bend forces */
 
     /* gravity */
     /* TODO: allow for fixed particles */
