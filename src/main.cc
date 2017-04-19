@@ -18,7 +18,7 @@
 #include "camera.h"
 #include "simulation.h"
 
-#define RENDER_STEPS 20
+#define RENDER_STEPS 5
 
 using namespace std;
 

@@ -59,7 +59,6 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         double residual = f.norm();
         if (residual < 1e-8) {
             /* qprev = q; */
-            q = guessQ;
             break;
         }
         SparseMatrix<double> identity(q.size(), q.size());
@@ -73,6 +72,7 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         solver.compute(df);
         guessQ -= solver.solve(f);
     }
+    q = guessQ;
     /* q += timeStep * v; */
     F = computeForce(q, qprev);
     v += timeStep * Minv * F;

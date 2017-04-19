@@ -25,7 +25,7 @@ public:
         vector<glm::uvec3>& obj_faces);
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
-    double timeStep = .001;
+    double timeStep = .0001;
 
 private:
     shared_ptr<Cloth> g_cloth;
