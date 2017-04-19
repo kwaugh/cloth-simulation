@@ -146,6 +146,12 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
             Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
             Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
         }
+        /* bending */ {
+            for (int j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
+                int i2 = g_cloth->adjacentFaces[i][j];
+
+            }
+        }
     }
     /* cout << "Stretch: " << Force_Stretch.segment<3>(0) << endl; */
 
