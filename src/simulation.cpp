@@ -79,8 +79,9 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
 VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     VectorXd Force_Stretch(q.size());
     Force_Stretch.setZero();
+    VectorXd Force_Shear(q.size());
+    Force_Shear.setZero();
     VectorXd massVec = g_cloth->getMassVector();
-    /* stretch forces */
     auto F = g_cloth->F;
     for (int i = 0; i < F.rows(); i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
@@ -104,23 +105,47 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
         dwdxx(1, 1) = (-deltau2)          / (deltau1 * deltav2 - deltau2 * deltav1);
         dwdxx(1, 2) = (deltau1)           / (deltau1 * deltav2 - deltau2 * deltav1);
 
-        Vector2d C;
-        C[0] = alpha * (w_u.norm() - 1);
-        C[1] = alpha * (w_v.norm() - 1);
-        Vector3d dCudx0 = alpha * dwdxx(0, 0) * w_u.normalized();
-        Vector3d dCudx1 = alpha * dwdxx(0, 1) * w_u.normalized();
-        Vector3d dCudx2 = alpha * dwdxx(0, 2) * w_u.normalized();
+        /* stretch */ {
+            Vector2d C;
+            C[0] = alpha * (w_u.norm() - 1);
+            C[1] = alpha * (w_v.norm() - 1);
+            Vector3d dCudx0 = alpha * dwdxx(0, 0) * w_u.normalized();
+            Vector3d dCudx1 = alpha * dwdxx(0, 1) * w_u.normalized();
+            Vector3d dCudx2 = alpha * dwdxx(0, 2) * w_u.normalized();
 
-        Vector3d dCvdx0 = alpha * dwdxx(1, 0) * w_v.normalized();
-        Vector3d dCvdx1 = alpha * dwdxx(1, 1) * w_v.normalized();
-        Vector3d dCvdx2 = alpha * dwdxx(1, 2) * w_v.normalized();
+            Vector3d dCvdx0 = alpha * dwdxx(1, 0) * w_v.normalized();
+            Vector3d dCvdx1 = alpha * dwdxx(1, 1) * w_v.normalized();
+            Vector3d dCvdx2 = alpha * dwdxx(1, 2) * w_v.normalized();
 
-        Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
-        Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
-        Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
-        Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
-        Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
-        Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
+            Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
+            Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
+            Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
+            Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
+            Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
+            Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
+        }
+        /* shear */ {
+            double C = alpha * w_u.dot(w_v);
+            Vector3d dCdx0(
+                    alpha * (dwdxx(0, 0) * w_v[0] + dwdxx(1, 0) * w_u[0]),
+                    alpha * (dwdxx(0, 0) * w_v[1] + dwdxx(1, 0) * w_u[1]),
+                    alpha * (dwdxx(0, 0) * w_v[2] + dwdxx(1, 0) * w_u[2])
+            );
+            Vector3d dCdx1(
+                    alpha * (dwdxx(0, 1) * w_v[0] + dwdxx(1, 1) * w_u[0]),
+                    alpha * (dwdxx(0, 1) * w_v[1] + dwdxx(1, 1) * w_u[1]),
+                    alpha * (dwdxx(0, 1) * w_v[2] + dwdxx(1, 1) * w_u[2])
+            );
+            Vector3d dCdx2(
+                    alpha * (dwdxx(0, 2) * w_v[0] + dwdxx(1, 2) * w_u[0]),
+                    alpha * (dwdxx(0, 2) * w_v[1] + dwdxx(1, 2) * w_u[1]),
+                    alpha * (dwdxx(0, 2) * w_v[2] + dwdxx(1, 2) * w_u[2])
+            );
+
+            Force_Shear.segment<3>(3 * F(i, 0)) += -g_cloth->kshear * dCdx0 * C;
+            Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
+            Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
+        }
     }
     /* cout << "Stretch: " << Force_Stretch.segment<3>(0) << endl; */
 
@@ -141,7 +166,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     /* cout << "Grav: " << Force_Gravity.segment<3>(0).norm() << endl; */
 
     /* damping */
-    return Force_Gravity + Force_Stretch;
+    return Force_Gravity + Force_Stretch + Force_Shear;
 }
 
 MatrixXd Simulation::computeDF(VectorXd q) {

@@ -256,6 +256,12 @@ int main(int argc, char* argv[]) {
                 sizeof(uint32_t) * obj_faces.size() * 3,
                 &obj_faces[0], GL_STATIC_DRAW));
 
+    // Setup normal array buffer
+    CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_buffer_objects[kGeometryVao][kNormalBuffer]));
+    CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                sizeof(float) * obj_normals.size() * 4,
+                &obj_normals[0], GL_STATIC_DRAW));
+
     /*
      * So far, the geometry is loaded into g_buffer_objects[kGeometryVao][*].
      * These buffers are binded to g_array_objects[kGeometryVao]
@@ -330,6 +336,7 @@ int main(int argc, char* argv[]) {
     CHECK_GL_ERROR(glAttachShader(program_id, geometry_shader_id));
 
     // Bind attributes.
+    CHECK_GL_ERROR(glBindAttribLocation(program_id, 0, "vertex_position"));
     CHECK_GL_ERROR(glBindAttribLocation(program_id, 0, "vertex_position"));
     CHECK_GL_ERROR(glBindFragDataLocation(program_id, 0, "fragment_color"));
     glLinkProgram(program_id);
