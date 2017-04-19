@@ -8,14 +8,9 @@ using namespace glm;
 using namespace Eigen;
 
 Simulation::Simulation(mutex *renderLock) : renderLock(renderLock) {
-    /* g_cloth = make_shared<Cloth>("../src/resources/cloth.node", */
-    /*         "../src/resources/cloth.ele", 1, Vector3d(0, 0, 1)); */
-    /* g_cloth = make_shared<Cloth>("../src/resources/cloth.1.node", */
-    /*         "../src/resources/cloth.1.ele", 1, Vector3d(0, 0, 1)); */
-    /* g_cloth = make_shared<Cloth>("../src/resources/cloth.2.node", */
-    /*         "../src/resources/cloth.2.ele", 1, Vector3d(0, 0, 1)); */
-    g_cloth = make_shared<Cloth>("../src/resources/cloth.3.node",
-            "../src/resources/cloth.3.ele", 1, Vector3d(0, 0, 1));
+    string vCloth = "4";
+    g_cloth = make_shared<Cloth>("../src/resources/cloth." + vCloth + ".node",
+            "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-.5, 0, .5));
     g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
             "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
 }
