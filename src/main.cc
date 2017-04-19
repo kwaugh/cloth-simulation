@@ -25,7 +25,8 @@ using namespace std;
 int window_width = 800, window_height = 600;
 
 // VBO and VAO descriptors.
-enum { kVertexBuffer, kIndexBuffer, kNumVbos };
+//     vertices       faces         vertex normals
+enum { kVertexBuffer, kIndexBuffer, kNormalBuffer, kNumVbos };
 
 // These are our VAOs.
 enum { kGeometryVao, kFloorVao, kNumVaos };
@@ -35,6 +36,7 @@ GLuint g_buffer_objects[kNumVaos][kNumVbos];  // These will store VBO descriptor
 
 vector<glm::vec4> obj_vertices;
 vector<glm::uvec3> obj_faces;
+vector<glm::vec4> obj_normals;
 
 atomic_bool shouldRender(true);
 
@@ -405,7 +407,7 @@ int main(int argc, char* argv[]) {
         renderLock.lock();
         if (shouldRender.load()) {
             /* cout << "rendering" << endl; */
-            sim->generate_geometry(obj_vertices, obj_faces);
+            sim->generate_geometry(obj_vertices, obj_faces, obj_normals);
             shouldRender.store(false);
         }
         renderLock.unlock();
@@ -423,6 +425,13 @@ int main(int argc, char* argv[]) {
         CHECK_GL_ERROR(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                     sizeof(uint32_t) * obj_faces.size() * 3,
                     &obj_faces[0], GL_STATIC_DRAW));
+
+        // Send normals to the GPU.
+        CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER,
+                    g_buffer_objects[kGeometryVao][kNormalBuffer]));
+        CHECK_GL_ERROR(glBufferData(GL_ARRAY_BUFFER,
+                    sizeof(float) * obj_normals.size() * 4,
+                    &obj_normals[0], GL_STATIC_DRAW));
 
         /* Use our program. */
         CHECK_GL_ERROR(glUseProgram(program_id));

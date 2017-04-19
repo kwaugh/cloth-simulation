@@ -21,7 +21,7 @@ public:
             double scale, Vector3d startPos);
     ~Cloth();
     void generate_geometry(vector<glm::vec4>&,
-        vector<glm::uvec3>&) const;
+        vector<glm::uvec3>&, vector<glm::vec4>&) const;
     MatrixX3d Pos; 
     MatrixX2d V; 
     MatrixX3d oldPos; 
@@ -32,6 +32,8 @@ public:
     VectorXd massVec;
     SparseMatrix<double> M;
     SparseMatrix<double> Minv;
+
+    vector<set<int>> vertexToFaces;
      
 
     void buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);

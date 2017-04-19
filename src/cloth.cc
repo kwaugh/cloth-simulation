@@ -50,12 +50,10 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     oldPos.resize(numVerts, 3);
     oldPos.setZero();
 
+    /* set the masses */
     massVec.resize(numVerts);
     massVec.setZero();
     A.resize(F.rows());
-    /* for (int i = 0; i < massVec.size(); i++) { */
-    /*     massVec[i] = 1; */
-    /* } */
     for (int i = 0; i < F.rows(); i++) {
         Vector3d a, b, c;
         a = Pos.row(F(i, 0));
@@ -69,46 +67,56 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
         massVec[F(i, 2)] += mass / 3;
     }
 
-    // The mass m_i of particle i is determined by summing one third the mass
-    // of all triangles containing the ith particle. A triangle's mass is the
-    // product of the triangle's fixed area in the uv coords.
+    /* compute mass inverse matrix */
     Minv.resize(Pos.rows() * 3, Pos.rows() * 3);
-
     vector<Tr> Minvcoeffs;
     for (int i = 0; i < Pos.rows(); i++) {
-        Minvcoeffs.push_back(Tr(3*i  , 3*i  , 1.0 / massVec[i])); // make them all 1 for now
-        Minvcoeffs.push_back(Tr(3*i+1, 3*i+1, 1.0 / massVec[i])); // make them all 1 for now
-        Minvcoeffs.push_back(Tr(3*i+2, 3*i+2, 1.0 / massVec[i])); // make them all 1 for now
+        Minvcoeffs.push_back(Tr(3*i  , 3*i  , 1.0 / massVec[i]));
+        Minvcoeffs.push_back(Tr(3*i+1, 3*i+1, 1.0 / massVec[i]));
+        Minvcoeffs.push_back(Tr(3*i+2, 3*i+2, 1.0 / massVec[i]));
     }
     Minv.setFromTriplets(Minvcoeffs.begin(), Minvcoeffs.end());
 
-    // The mass m_i of particle i is determined by summing one third the mass
-    // of all triangles containing the ith particle. A triangle's mass is the
-    // product of the triangle's fixed area in the uv coords.
+    /* compute mass matrix */
     M.resize(Pos.rows() * Pos.cols(), Pos.rows() * Pos.cols());
-
     vector<Tr> Mcoeffs;
     for (int i = 0; i < Pos.rows(); i++) {
-        Mcoeffs.push_back(Tr(3*i  , 3*i  , massVec[i])); // make them all 1 for now
-        Mcoeffs.push_back(Tr(3*i+1, 3*i+1, massVec[i])); // make them all 1 for now
-        Mcoeffs.push_back(Tr(3*i+2, 3*i+2, massVec[i])); // make them all 1 for now
+        Mcoeffs.push_back(Tr(3*i  , 3*i  , massVec[i]));
+        Mcoeffs.push_back(Tr(3*i+1, 3*i+1, massVec[i]));
+        Mcoeffs.push_back(Tr(3*i+2, 3*i+2, massVec[i]));
     }
     M.setFromTriplets(Mcoeffs.begin(), Mcoeffs.end());
+
+    /* compute vertex to faces map that's used for rendering */
+    vertexToFaces.resize(Pos.rows());
+    for (int i = 0; i < F.rows(); i++) {
+        vertexToFaces[F(i, 0)].insert(i); 
+    }
 }
 
 Cloth::~Cloth() { }
 
-void Cloth::generate_geometry(vector<glm::vec4>& obj_vertices,
-        vector<glm::uvec3>& obj_faces) const {
-    obj_vertices.clear();
-    obj_faces.clear();
+void Cloth::generate_geometry(vector<vec4>& obj_vertices,
+        vector<uvec3>& obj_faces, vector<vec4>& obj_normals) const {
     for (uint i = 0; i < Pos.rows(); i++) {
         Vector3d row = Pos.row(i);
-        obj_vertices.push_back(glm::vec4(row[0], row[1], row[2], 1.0));
+        obj_vertices.push_back(vec4(row[0], row[1], row[2], 1.0));
     }
     for (uint i = 0; i < F.rows(); i++) {
         Vector3i face = F.row(i);
-        obj_faces.push_back(glm::uvec3(face[0], face[1], face[2]));
+        obj_faces.push_back(uvec3(face[0], face[1], face[2]));
+    }
+    /* calculate the vertex normals for rendering purposes */
+    for (uint i = 0; i < vertexToFaces.size(); i++) {
+        Vector3d vNorm(0, 0, 0);
+        for (int face : vertexToFaces[i]) {
+            Vector3d x = Pos.row(F(face, 0)); 
+            Vector3d y = Pos.row(F(face, 1)); 
+            Vector3d z = Pos.row(F(face, 2)); 
+            vNorm += (x - y).cross(y - z);
+        }
+        vNorm = vNorm.normalized();
+        obj_normals.push_back(vec4(vNorm[0], vNorm[1], vNorm[2], 0.0));
     }
 }
 

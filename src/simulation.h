@@ -22,7 +22,7 @@ public:
     void takeSimulationStep();
     void numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev);
     void generate_geometry(vector<glm::vec4>& obj_vertices,
-        vector<glm::uvec3>& obj_faces);
+        vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
     double timeStep = .0003;

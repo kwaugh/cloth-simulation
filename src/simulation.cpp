@@ -17,9 +17,12 @@ Simulation::Simulation(mutex *renderLock) : renderLock(renderLock) {
 
 Simulation::~Simulation() {}
 
-void Simulation::generate_geometry(vector<glm::vec4>& obj_vertices,
-        vector<glm::uvec3>& obj_faces) {
-    g_cloth->generate_geometry(obj_vertices, obj_faces);
+void Simulation::generate_geometry(vector<vec4>& obj_vertices,
+        vector<uvec3>& obj_faces, vector<vec4>& obj_normals) {
+    obj_vertices.clear();
+    obj_faces.clear();
+    obj_normals.clear();
+    g_cloth->generate_geometry(obj_vertices, obj_faces, obj_normals);
     /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
 }
 
