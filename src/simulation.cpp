@@ -10,7 +10,7 @@ using namespace Eigen;
 Simulation::Simulation(mutex *renderLock) : renderLock(renderLock) {
     string vCloth = "4";
     g_cloth = make_shared<Cloth>("../src/resources/cloth." + vCloth + ".node",
-            "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-.5, 0, .5));
+            "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-1, 0, .5));
     g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
             "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
 }
@@ -172,6 +172,8 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
 MatrixXd Simulation::computeDF(VectorXd q) {
     MatrixXd df_stretch(q.size(), q.size());
     df_stretch.setZero();
+    MatrixXd df_shear(q.size(), q.size());
+    df_shear.setZero();
     auto F = g_cloth->F;
     for (int i = 0; i < F.rows(); i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
@@ -195,34 +197,64 @@ MatrixXd Simulation::computeDF(VectorXd q) {
         dwdxx(1, 1) = (-deltau2)          / (deltau1 * deltav2 - deltau2 * deltav1);
         dwdxx(1, 2) = (deltau1)           / (deltau1 * deltav2 - deltau2 * deltav1);
 
-        Vector2d C;
-        C[0] = alpha * (w_u.norm() - 1);
-        C[1] = alpha * (w_v.norm() - 1);
+        /* stretch */ {
+            Vector2d C;
+            C[0] = alpha * (w_u.norm() - 1);
+            C[1] = alpha * (w_v.norm() - 1);
 
-        MatrixX3d dCudx(3, 3);
-        MatrixX3d dCvdx(3, 3);
-        dCudx.row(0) = alpha * dwdxx(0, 0) * w_u.normalized();
-        dCudx.row(1) = alpha * dwdxx(0, 1) * w_u.normalized();
-        dCudx.row(2) = alpha * dwdxx(0, 2) * w_u.normalized();
+            MatrixX3d dCudx(3, 3);
+            MatrixX3d dCvdx(3, 3);
+            dCudx.row(0) = alpha * dwdxx(0, 0) * w_u.normalized();
+            dCudx.row(1) = alpha * dwdxx(0, 1) * w_u.normalized();
+            dCudx.row(2) = alpha * dwdxx(0, 2) * w_u.normalized();
 
-        dCvdx.row(0) = alpha * dwdxx(1, 0) * w_v.normalized();
-        dCvdx.row(1) = alpha * dwdxx(1, 1) * w_v.normalized();
-        dCvdx.row(2) = alpha * dwdxx(1, 2) * w_v.normalized();
+            dCvdx.row(0) = alpha * dwdxx(1, 0) * w_v.normalized();
+            dCvdx.row(1) = alpha * dwdxx(1, 1) * w_v.normalized();
+            dCvdx.row(2) = alpha * dwdxx(1, 2) * w_v.normalized();
 
-        for (int m = 0; m < 3; m++) {
-            for (int n = 0; n < 3; n++) {
-                MatrixX3d d2Cudxmn = alpha / w_u.norm() * dwdxx(0, m)* dwdxx(0, n)
-                    * (MatrixXd::Identity(3, 3) - w_u.normalized()*w_u.normalized().transpose());
-                df_stretch.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
-                    * (dCudx.row(m).transpose() * dCudx.row(n) + d2Cudxmn * C[0]);
+            for (int m = 0; m < 3; m++) {
+                for (int n = 0; n < 3; n++) {
+                    MatrixX3d d2Cudxmn = alpha / w_u.norm() * dwdxx(0, m)* dwdxx(0, n)
+                        * (MatrixXd::Identity(3, 3) - w_u.normalized()*w_u.normalized().transpose());
+                    df_stretch.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
+                        * (dCudx.row(m).transpose() * dCudx.row(n) + d2Cudxmn * C[0]);
 
-                MatrixX3d d2Cvdxmn = alpha / w_v.norm() * dwdxx(1, m)* dwdxx(1, n)
-                    * (MatrixXd::Identity(3, 3) - w_v.normalized()*w_v.normalized().transpose());
-                df_stretch.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
-                    * (dCvdx.row(m).transpose() * dCvdx.row(n) + d2Cvdxmn * C[1]);
+                    MatrixX3d d2Cvdxmn = alpha / w_v.norm() * dwdxx(1, m)* dwdxx(1, n)
+                        * (MatrixXd::Identity(3, 3) - w_v.normalized()*w_v.normalized().transpose());
+                    df_stretch.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
+                        * (dCvdx.row(m).transpose() * dCvdx.row(n) + d2Cvdxmn * C[1]);
+                }
+            }
+        }
+        /* shear */ {
+            double C = alpha * w_u.dot(w_v);
+            MatrixX3d dCdx(3, 3);
+            dCdx.row(0) = Vector3d(
+                    alpha * (dwdxx(0, 0) * w_v[0] + dwdxx(1, 0) * w_u[0]),
+                    alpha * (dwdxx(0, 0) * w_v[1] + dwdxx(1, 0) * w_u[1]),
+                    alpha * (dwdxx(0, 0) * w_v[2] + dwdxx(1, 0) * w_u[2])
+            );
+            dCdx.row(1) = Vector3d(
+                    alpha * (dwdxx(0, 1) * w_v[0] + dwdxx(1, 1) * w_u[0]),
+                    alpha * (dwdxx(0, 1) * w_v[1] + dwdxx(1, 1) * w_u[1]),
+                    alpha * (dwdxx(0, 1) * w_v[2] + dwdxx(1, 1) * w_u[2])
+            );
+            dCdx.row(2) = Vector3d(
+                    alpha * (dwdxx(0, 2) * w_v[0] + dwdxx(1, 2) * w_u[0]),
+                    alpha * (dwdxx(0, 2) * w_v[1] + dwdxx(1, 2) * w_u[1]),
+                    alpha * (dwdxx(0, 2) * w_v[2] + dwdxx(1, 2) * w_u[2])
+            );
+            for (int m = 0; m < 3; m++) {
+                for (int n = 0; n < 3; n++) {
+                    double stretchedD = alpha *
+                        (dwdxx(0, m) * dwdxx(1, n) + dwdxx(0, n) * dwdxx(1, m));
+                    MatrixX3d d2Cdxmn = MatrixXd::Identity(3, 3) * stretchedD;
+                    df_shear.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kshear
+                        * (dCdx.row(m).transpose() * dCdx.row(n) + d2Cdxmn * C);
+                }
             }
         }
     }
 
-    return df_stretch;
+    return df_stretch + df_shear;
 }
