@@ -92,6 +92,24 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     for (int i = 0; i < F.rows(); i++) {
         vertexToFaces[F(i, 0)].insert(i); 
     }
+
+    /* compute face to adjacent faces map */
+    adjacentFaces.resize(F.rows());
+    for (int i = 0; i < F.rows(); i++) {
+        for (int j = i+1; j < F.rows(); j++) {
+            int numShared = 0;
+            for (int m = 0; m < 3; m++) {
+                for (int n = 0; n < 3; n++) {
+                    if (F(i, m) == F(j, n)) {
+                        numShared++;
+                    }
+                }
+            }
+            if (numShared == 2) {
+                adjacentFaces[i].push_back(j);
+            }
+        }
+    }
 }
 
 Cloth::~Cloth() { }

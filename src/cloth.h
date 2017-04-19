@@ -34,6 +34,7 @@ public:
     SparseMatrix<double> Minv;
 
     vector<set<int>> vertexToFaces;
+    vector<vector<int>> adjacentFaces;
      
 
     void buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);

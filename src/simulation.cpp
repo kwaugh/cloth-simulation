@@ -258,3 +258,14 @@ MatrixXd Simulation::computeDF(VectorXd q) {
 
     return df_stretch + df_shear;
 }
+
+const Matrix3d Simulation::S(const Eigen::Vector3d &v) {
+    Matrix3d result;
+    result << 0, -v[2], v[1],
+            v[2], 0, -v[0],
+            -v[1], v[0], 0;
+    return result;
+}
+const Vector3d Simulation::S_S(const Eigen::Vector3d &v, int index) {
+    return S(v).row(index);
+}
