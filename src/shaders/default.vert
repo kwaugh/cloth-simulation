@@ -1,5 +1,6 @@
 R"zzz(#version 330 core
 in vec4 vertex_position;
+in vec4 vertex_normal;
 uniform mat4 view;
 uniform vec4 light_position;
 out vec4 vs_light_direction;

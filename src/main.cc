@@ -337,7 +337,7 @@ int main(int argc, char* argv[]) {
 
     // Bind attributes.
     CHECK_GL_ERROR(glBindAttribLocation(program_id, 0, "vertex_position"));
-    CHECK_GL_ERROR(glBindAttribLocation(program_id, 0, "vertex_position"));
+    CHECK_GL_ERROR(glBindAttribLocation(program_id, 2, "vertex_normal"));
     CHECK_GL_ERROR(glBindFragDataLocation(program_id, 0, "fragment_color"));
     glLinkProgram(program_id);
     CHECK_GL_PROGRAM_ERROR(program_id);
