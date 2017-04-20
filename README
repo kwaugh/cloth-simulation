@@ -1,0 +1,34 @@
+Keivaun Waugh and Naeem Quddus
+
+How to compile and run:
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+bin/cloth
+
+There is no graphical user interface besides a window that appears with the
+cloth simulation. Camera controls are implemented (the same camera controls
+that were in the graphics menger sponge project). We implemented
+everything we described in the milestone 1 project proposal except for the
+inclusion of a wind force, namely rendering and internal cloth dynamics. 
+
+We used the dynamics method described in the paper "Large Steps in Cloth
+Simulation" by Baraff and Witkin. The forces include gravity, stretching,
+shearing, and bending. The time integrator is implicit Euler. We do not have
+any damping. The constants we used were from the paper "Implementing Baraff
+& Witkin's Cloth Simulation" by David Pritchard with the exception of the
+time step.
+
+We plan to move the wind force from milestone 1 to milestone 2. We probably
+will not implement tearing in milestone 2 as it seems that cloth collisions are
+very involved.
+
+Testing:
+We experimented with removing the different forces (Force_Stretch,
+Force_Shear, Force_Bending in simulation.cpp) and their
+corresponding differentials to make sure the cloth motion appeared
+reasonable. We also manually fixed points by not updating their positions
+during unbuildConfiguration in cloth.cc. We tried fixing a single corner,
+two adjacent corners, two opposite corners, and a single point somewhere in
+the middle of the cloth. All these produces visually appealing results.
