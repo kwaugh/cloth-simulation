@@ -27,7 +27,7 @@ public:
     MatrixXd computeDF(VectorXd q);
     double timeStep = .0003;
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
-    static const Eigen::Vector3d S_S(const Eigen::Vector3d &v, int index);
+    static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
 
 private:
     shared_ptr<Cloth> g_cloth;
