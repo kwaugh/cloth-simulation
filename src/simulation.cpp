@@ -1,7 +1,7 @@
 #include "simulation.h"
 #include <iostream>
 
-#define BICBOI BiCGSTAB 
+#define BICBOI BiCGSTAB
 
 using namespace std;
 using namespace glm;
@@ -83,14 +83,15 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     Force_Shear.setZero();
     VectorXd massVec = g_cloth->getMassVector();
     auto F = g_cloth->F;
+    auto V = g_cloth->V;
     for (int i = 0; i < F.rows(); i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
         Vector3d x1 = g_cloth->Pos.row(F(i, 1));
         Vector3d x2 = g_cloth->Pos.row(F(i, 2));
-        double deltau1 = g_cloth->V(F(i, 1), 0) - g_cloth->V(F(i, 0), 0);
-        double deltau2 = g_cloth->V(F(i, 2), 0) - g_cloth->V(F(i, 0), 0);
-        double deltav1 = g_cloth->V(F(i, 1), 1) - g_cloth->V(F(i, 0), 1);
-        double deltav2 = g_cloth->V(F(i, 2), 1) - g_cloth->V(F(i, 0), 1);
+        double deltau1 = V(F(i, 1), 0) - V(F(i, 0), 0);
+        double deltau2 = V(F(i, 2), 0) - V(F(i, 0), 0);
+        double deltav1 = V(F(i, 1), 1) - V(F(i, 0), 1);
+        double deltav2 = V(F(i, 2), 1) - V(F(i, 0), 1);
         double alpha = pow(g_cloth->A[i], .75);
         Vector3d w_u = ((x1 - x0) * deltav2 - (x2 - x0) * deltav1)
             / (deltau1 * deltav2 - deltau2 * deltav1);
@@ -147,17 +148,17 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
             Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
         }
         /* bending */ {
-            for (int j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
+            for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
                 int i2 = g_cloth->adjacentFaces[i][j];
                 int unique_i_point = 0;
                 int unique_j_point = 0;
                 for (int x = 0; x < 3; x++) {
-                    if (F(j, 0) != F(i, x) && 
+                    if (F(j, 0) != F(i, x) &&
                         F(j, 1) != F(i, x) &&
                         F(j, 2) != F(i, x)) {
                         unique_i_point = x;
                     }
-                    if (F(i, 0) != F(j, x) && 
+                    if (F(i, 0) != F(j, x) &&
                         F(i, 1) != F(j, x) &&
                         F(i, 2) != F(j, x)) {
                         unique_j_point = x;
@@ -168,7 +169,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
                 Vector3d x1 = V.row(F(i, (unique_i_point+1)%3));
                 Vector3d x2 = V.row(F(i, (unique_i_point+2)%3));
                 Vector3d x3 = V.row(F(j, unique_j_point));
-                
+
                 Vector3d nA = (x2 - x0).cross(x1 - x0);
                 Vector3d nB = (x1 - x3).cross(x2 - x3);
                 Vector3d e = x1 - x2;
@@ -188,7 +189,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     VectorXd Force_Gravity(q.size());
     Force_Gravity.setZero();
     for (int i = 1; i < q.size(); i+=3) {
-        Force_Gravity[i] += -grav * massVec[i / 3]; 
+        Force_Gravity[i] += -grav * massVec[i / 3];
     }
 
     /* cout << "Grav: " << Force_Gravity.segment<3>(0).norm() << endl; */
@@ -203,14 +204,15 @@ MatrixXd Simulation::computeDF(VectorXd q) {
     MatrixXd df_shear(q.size(), q.size());
     df_shear.setZero();
     auto F = g_cloth->F;
+    auto V = g_cloth->V;
     for (int i = 0; i < F.rows(); i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
         Vector3d x1 = g_cloth->Pos.row(F(i, 1));
         Vector3d x2 = g_cloth->Pos.row(F(i, 2));
-        double deltau1 = g_cloth->V(F(i, 1), 0) - g_cloth->V(F(i, 0), 0);
-        double deltau2 = g_cloth->V(F(i, 2), 0) - g_cloth->V(F(i, 0), 0);
-        double deltav1 = g_cloth->V(F(i, 1), 1) - g_cloth->V(F(i, 0), 1);
-        double deltav2 = g_cloth->V(F(i, 2), 1) - g_cloth->V(F(i, 0), 1);
+        double deltau1 = V(F(i, 1), 0) - V(F(i, 0), 0);
+        double deltau2 = V(F(i, 2), 0) - V(F(i, 0), 0);
+        double deltav1 = V(F(i, 1), 1) - V(F(i, 0), 1);
+        double deltav2 = V(F(i, 2), 1) - V(F(i, 0), 1);
         double alpha = pow(g_cloth->A[i], .75);
         Vector3d w_u = ((x1 - x0) * deltav2 - (x2 - x0) * deltav1)
             / (deltau1 * deltav2 - deltau2 * deltav1);
