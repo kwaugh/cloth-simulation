@@ -13,6 +13,7 @@ void main()
     vs_pos = vertex_position;
     float cosTheta = dot(normalize(vs_light_direction), normalize(vertex_normal));
     cosTheta = clamp(cosTheta, 0.0, 1.0);
+    cosTheta = 1.0;
     vs_color = clamp(cosTheta * vec4(1.0, 0.0, 0.0, 1.0), 0.0, 1.0);
 }
 )zzz"
