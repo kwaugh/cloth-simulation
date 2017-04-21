@@ -404,11 +404,6 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 dqA.row(2) = Vector4d( 0, -1,  0,  1);
                 dqA.row(3) = Vector4d( 0,  1, -1,  0);
 
-                /**
-                 * d2nadxmsnt
-                 * d2nbdxmsnt
-                 */
-
                 for (int m = 0; m < 4; m++) {
                     Vector3d dCdxm;
                     for (int n = 0; n < 4; n++) {

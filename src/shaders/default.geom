@@ -4,6 +4,7 @@ layout (triangle_strip, max_vertices = 3) out;
 uniform mat4 projection;
 in vec4 vs_light_direction[];
 in vec4 vs_pos[];
+in vec4 vs_color[];
 flat out vec4 normal;
 flat out vec4 world_normal;
 out vec4 light_direction;
