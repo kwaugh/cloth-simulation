@@ -1,0 +1,11 @@
+- GUI with libigl
+- make dynamics faster
+    - newton's method not converging?
+- collisions
+    - compute bounding box at each time step
+    - bvh to find intersecting bounding boxes
+    - pass intersecting points to library to find exact collisions
+    - handle collisions
+        - penalty force
+        - impulses
+- tearing along triangle boundaries
