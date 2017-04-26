@@ -27,6 +27,10 @@ void Simulation::generate_geometry(vector<vec4>& obj_vertices,
     /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
 }
 
+void Simulation::generate_libigl_geometry(MatrixXd& Verts, MatrixXi& Faces) {
+    g_cloth->generate_libigl_geometry(Verts, Faces);
+}
+
 void Simulation::takeSimulationStep() {
     VectorXd q, v, qprev;
     g_cloth->buildConfiguration(q, v, qprev);

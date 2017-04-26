@@ -138,6 +138,11 @@ void Cloth::generate_geometry(vector<vec4>& obj_vertices,
     }
 }
 
+void Cloth::generate_libigl_geometry(MatrixXd& Verts, MatrixXi& Faces) const {
+    Verts = Pos;
+    Faces = F;
+}
+
 void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     q.resize(Pos.rows() * Pos.cols());
     v.resize(Pos.rows() * Pos.cols());
