@@ -62,10 +62,10 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         }
         SparseMatrix<double> identity(q.size(), q.size());
         identity.setIdentity();
-        SparseMatrix<double> df = -identity
+        SparseMatrix<double> df = (-MatrixXd::Identity(q.size(), q.size())
             + timeStep * timeStep
             * Minv
-            * computeDF(guessQ);
+            * computeDF(guessQ)).sparseView();
         BICBOI<SparseMatrix<double>> solver;
         /* SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > solver; */
         solver.compute(df);
