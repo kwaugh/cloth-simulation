@@ -76,7 +76,7 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         solver.compute(df);
         guessQ -= solver.solve(f);
     }
-    cout << "Newton's method ran in " << i << " iterations." << endl;
+    /* cout << "Newton's method ran in " << i << " iterations." << endl; */
     q = guessQ;
     /* q += timeStep * v; */
     F = computeForce(q, qprev);
@@ -383,13 +383,13 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 double C = theta;
 
                 MatrixX3d qA(4, 3);
-                qA.setZero();
                 qA.row(0) = x2 - x1;
                 qA.row(1) = x0 - x2;
                 qA.row(2) = x1 - x0;
+                qA.row(3) = Vector3d(0, 0, 0);
 
                 MatrixX3d qB(4, 3);
-                qB.setZero();
+                qB.row(0) = Vector3d(0, 0, 0);
                 qB.row(1) = x2 - x3;
                 qB.row(2) = x3 - x1;
                 qB.row(3) = x1 - x2;
@@ -397,14 +397,12 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 Vector4d qe(0, 1, -1, 0);
 
                 MatrixX4d dqA(4, 4);
-                dqA.setZero();
                 dqA.row(0) = Vector4d( 0, -1,  1,  0);
                 dqA.row(1) = Vector4d( 1,  0, -1,  0);
                 dqA.row(2) = Vector4d(-1,  1,  0,  0);
                 dqA.row(3) = Vector4d( 0,  0,  0,  0);
 
                 MatrixX4d dqB(4, 4);
-                dqB.setZero();
                 dqA.row(0) = Vector4d( 0,  0,  0,  0);
                 dqA.row(1) = Vector4d( 0,  0,  1, -1);
                 dqA.row(2) = Vector4d( 0, -1,  0,  1);
@@ -412,10 +410,9 @@ MatrixXd Simulation::computeDF(VectorXd q) {
 
                 for (int m = 0; m < 4; m++) {
                     Vector3d dCdxm;
-                    for (int n = 0; n < 4; n++) {
+                    for (int n = m; n < 4; n++) {
                         Vector3d dCdxn;
                         MatrixX3d d2Cdxmn(3, 3);
-                        d2Cdxmn.setZero();
                         for (int s = 0; s < 3; s++) {
                             Vector3d dnadxms = S_s(qA.row(m), s);
                             Vector3d dnbdxms = S_s(qB.row(m), s);
@@ -431,7 +428,7 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                                     ).dot(e.normalized())
                                 + (nA.normalized().cross(nB.normalized()).dot(dehatdxms));
                             dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms;
-                            for (int t = 0; t < 3; t++)  {
+                            for (int t = s; t < 3; t++)  {
                                 Vector3d dnadxnt = S_s(qA.row(n), t);
                                 Vector3d dnbdxnt = S_s(qB.row(n), t);
                                 Vector3d dedxnt = qe[n] * MatrixXd::Identity(3, 3).row(t);
@@ -494,7 +491,7 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                                         (
                                             dcosTdxms * dcosTdxnt - dsinTdxms * dsinTdxnt
                                         );
-                            
+                                d2Cdxmn(t, s) = d2Cdxmn(s, t);
                             }
                         }
                         df_bend.block<3, 3>(particleIdx[m] * 3, particleIdx[n] * 3) +=
