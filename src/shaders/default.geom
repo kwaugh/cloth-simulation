@@ -4,10 +4,12 @@ layout (triangle_strip, max_vertices = 3) out;
 uniform mat4 projection;
 in vec4 vs_light_direction[];
 in vec4 vs_pos[];
+in vec4 vs_color[];
 flat out vec4 normal;
 flat out vec4 world_normal;
 out vec4 light_direction;
 out vec4 world_position;
+out vec4 interp_color;
 void main()
 {
     int n = 0;
@@ -20,6 +22,7 @@ void main()
     world_normal = normalize(vec4(cross(world_ba, world_cb), 0.0));
     for (n = 0; n < gl_in.length(); n++) {
         light_direction = vs_light_direction[n];
+        interp_color = vs_color[n];
         gl_Position = projection * gl_in[n].gl_Position;
         world_position = vs_pos[n];
         EmitVertex();

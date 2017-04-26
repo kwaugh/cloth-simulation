@@ -3,9 +3,9 @@
 
 #include <vector>
 #include <string>
-#include "../src/eigen/Eigen/Core"
-#include "../src/eigen/Eigen/Geometry"
-#include "../src/eigen/Eigen/Sparse"
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/Sparse>
 #include <glm/glm.hpp>
 #include <set>
 
