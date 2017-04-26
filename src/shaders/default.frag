@@ -15,7 +15,7 @@ void main()
     }
     float dot_nl = dot(normalize(light_direction), norm_normal);
     dot_nl = clamp(dot_nl, 0.0, 1.0);
-    /* fragment_color = clamp(dot_nl * color, 0.0, 1.0); */
-    fragment_color = interp_color;
+    fragment_color = clamp(dot_nl * color, 0.0, 1.0);
+    /* fragment_color = interp_color; */
 }
 )zzz"
