@@ -151,82 +151,82 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
             Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
             Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
         }
-        /* bending */ {
-            for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
-                int i2 = g_cloth->adjacentFaces[i][j];
-                int unique_i_point = 0;
-                int unique_i2_point = 0;
-                for (int x = 0; x < 3; x++) {
-                    if (F(i2, 0) != F(i, x) &&
-                        F(i2, 1) != F(i, x) &&
-                        F(i2, 2) != F(i, x)) {
-                        unique_i_point = x;
-                    }
-                    if (F(i, 0) != F(i2, x) &&
-                        F(i, 1) != F(i2, x) &&
-                        F(i, 2) != F(i2, x)) {
-                        unique_i2_point = x;
-                    }
-                }
+        /* /1* bending *1/ { */
+        /*     for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) { */
+        /*         int i2 = g_cloth->adjacentFaces[i][j]; */
+        /*         int unique_i_point = 0; */
+        /*         int unique_i2_point = 0; */
+        /*         for (int x = 0; x < 3; x++) { */
+        /*             if (F(i2, 0) != F(i, x) && */
+        /*                 F(i2, 1) != F(i, x) && */
+        /*                 F(i2, 2) != F(i, x)) { */
+        /*                 unique_i_point = x; */
+        /*             } */
+        /*             if (F(i, 0) != F(i2, x) && */
+        /*                 F(i, 1) != F(i2, x) && */
+        /*                 F(i, 2) != F(i2, x)) { */
+        /*                 unique_i2_point = x; */
+        /*             } */
+        /*         } */
 
-                Vector3d x0 = Pos.row(F(i, unique_i_point));
-                Vector3d x1 = Pos.row(F(i, (unique_i_point+1)%3));
-                Vector3d x2 = Pos.row(F(i, (unique_i_point+2)%3));
-                Vector3d x3 = Pos.row(F(i2, unique_i2_point));
+        /*         Vector3d x0 = Pos.row(F(i, unique_i_point)); */
+        /*         Vector3d x1 = Pos.row(F(i, (unique_i_point+1)%3)); */
+        /*         Vector3d x2 = Pos.row(F(i, (unique_i_point+2)%3)); */
+        /*         Vector3d x3 = Pos.row(F(i2, unique_i2_point)); */
 
-                int particleIdx[4] = {
-                    F(i, unique_i_point),
-                    F(i, (unique_i_point+1)%3),
-                    F(i, (unique_i_point+2)%3),
-                    F(i2, unique_i2_point)
-                };
+        /*         int particleIdx[4] = { */
+        /*             F(i, unique_i_point), */
+        /*             F(i, (unique_i_point+1)%3), */
+        /*             F(i, (unique_i_point+2)%3), */
+        /*             F(i2, unique_i2_point) */
+        /*         }; */
 
-                Vector3d nA = (x2 - x0).cross(x1 - x0);
-                Vector3d nB = (x1 - x3).cross(x2 - x3);
-                Vector3d e = x1 - x2;
+        /*         Vector3d nA = (x2 - x0).cross(x1 - x0); */
+        /*         Vector3d nB = (x1 - x3).cross(x2 - x3); */
+        /*         Vector3d e = x1 - x2; */
 
-                double sinT = (nA.normalized().cross(nB.normalized()).dot(e.normalized()));
-                double cosT = (nA.normalized().dot(nB.normalized()));
-                double theta = atan2(sinT, cosT);
-                double C = theta;
+        /*         double sinT = (nA.normalized().cross(nB.normalized()).dot(e.normalized())); */
+        /*         double cosT = (nA.normalized().dot(nB.normalized())); */
+        /*         double theta = atan2(sinT, cosT); */
+        /*         double C = theta; */
 
-                MatrixX3d qA(4, 3);
-                qA.setZero();
-                qA.row(0) = x2 - x1;
-                qA.row(1) = x0 - x2;
-                qA.row(2) = x1 - x0;
+        /*         MatrixX3d qA(4, 3); */
+        /*         qA.setZero(); */
+        /*         qA.row(0) = x2 - x1; */
+        /*         qA.row(1) = x0 - x2; */
+        /*         qA.row(2) = x1 - x0; */
 
-                MatrixX3d qB(4, 3);
-                qB.setZero();
-                qB.row(1) = x2 - x3;
-                qB.row(2) = x3 - x1;
-                qB.row(3) = x1 - x2;
+        /*         MatrixX3d qB(4, 3); */
+        /*         qB.setZero(); */
+        /*         qB.row(1) = x2 - x3; */
+        /*         qB.row(2) = x3 - x1; */
+        /*         qB.row(3) = x1 - x2; */
 
-                Vector4d qe(0, 1, -1, 0);
+        /*         Vector4d qe(0, 1, -1, 0); */
 
-                for (int m = 0; m < 4; m++) {
-                    Vector3d dCdxm;
-                    for (int s = 0; s < 3; s++) {
-                        Vector3d dnadxms = S_s(qA.row(m), s);
-                        Vector3d dnbdxms = S_s(qB.row(m), s);
-                        Vector3d dedxms = qe[m] * MatrixXd::Identity(3, 3).row(s);
-                        Vector3d dnhatadxms = dnadxms / nA.norm();
-                        Vector3d dnhatbdxms = dnbdxms / nB.norm();
-                        Vector3d dehatdxms = dedxms / e.norm();
-                        double dcosTdxms = dnhatadxms.dot(nB.normalized())
-                            + nA.normalized().dot(dnhatbdxms);
-                        double dsinTdxms = (
-                                dnhatadxms.cross(nB.normalized())
-                                + nA.normalized().cross(dnhatbdxms)
-                                ).dot(e.normalized())
-                            + (nA.normalized().cross(nB.normalized()).dot(dehatdxms));
-                        dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms;
-                    }
-                    Force_Bend.segment<3>(3 * particleIdx[m]) += -g_cloth->kbend
-                        * dCdxm * C;
-                }
-            }
-        }
+        /*         for (int m = 0; m < 4; m++) { */
+        /*             Vector3d dCdxm; */
+        /*             for (int s = 0; s < 3; s++) { */
+        /*                 Vector3d dnadxms = S_s(qA.row(m), s); */
+        /*                 Vector3d dnbdxms = S_s(qB.row(m), s); */
+        /*                 Vector3d dedxms = qe[m] * MatrixXd::Identity(3, 3).row(s); */
+        /*                 Vector3d dnhatadxms = dnadxms / nA.norm(); */
+        /*                 Vector3d dnhatbdxms = dnbdxms / nB.norm(); */
+        /*                 Vector3d dehatdxms = dedxms / e.norm(); */
+        /*                 double dcosTdxms = dnhatadxms.dot(nB.normalized()) */
+        /*                     + nA.normalized().dot(dnhatbdxms); */
+        /*                 double dsinTdxms = ( */
+        /*                         dnhatadxms.cross(nB.normalized()) */
+        /*                         + nA.normalized().cross(dnhatbdxms) */
+        /*                         ).dot(e.normalized()) */
+        /*                     + (nA.normalized().cross(nB.normalized()).dot(dehatdxms)); */
+        /*                 dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms; */
+        /*             } */
+        /*             Force_Bend.segment<3>(3 * particleIdx[m]) += -g_cloth->kbend */
+        /*                 * dCdxm * C; */
+        /*         } */
+        /*     } */
+        /* } */
     }
     /* cout << "Stretch: " << Force_Stretch.segment<3>(0) << endl; */
 
@@ -337,171 +337,166 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 }
             }
         }
-        /* bending */ {
-            for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
-                int i2 = g_cloth->adjacentFaces[i][j];
-                int unique_i_point = 0;
-                int unique_i2_point = 0;
-                for (int x = 0; x < 3; x++) {
-                    if (F(i2, 0) != F(i, x) &&
-                        F(i2, 1) != F(i, x) &&
-                        F(i2, 2) != F(i, x)) {
-                        unique_i_point = x;
-                    }
-                    if (F(i, 0) != F(i2, x) &&
-                        F(i, 1) != F(i2, x) &&
-                        F(i, 2) != F(i2, x)) {
-                        unique_i2_point = x;
-                    }
-                }
+        /* /1* bending *1/ { */
+        /*     for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) { */
+        /*         int i2 = g_cloth->adjacentFaces[i][j]; */
+        /*         int unique_i_point = 0; */
+        /*         int unique_i2_point = 0; */
+        /*         for (int x = 0; x < 3; x++) { */
+        /*             if (F(i2, 0) != F(i, x) && */
+        /*                 F(i2, 1) != F(i, x) && */
+        /*                 F(i2, 2) != F(i, x)) { */
+        /*                 unique_i_point = x; */
+        /*             } */
+        /*             if (F(i, 0) != F(i2, x) && */
+        /*                 F(i, 1) != F(i2, x) && */
+        /*                 F(i, 2) != F(i2, x)) { */
+        /*                 unique_i2_point = x; */
+        /*             } */
+        /*         } */
 
-                Vector3d x0 = Pos.row(F(i, unique_i_point));
-                Vector3d x1 = Pos.row(F(i, (unique_i_point+1)%3));
-                Vector3d x2 = Pos.row(F(i, (unique_i_point+2)%3));
-                Vector3d x3 = Pos.row(F(i2, unique_i2_point));
+        /*         Vector3d x0 = Pos.row(F(i, unique_i_point)); */
+        /*         Vector3d x1 = Pos.row(F(i, (unique_i_point+1)%3)); */
+        /*         Vector3d x2 = Pos.row(F(i, (unique_i_point+2)%3)); */
+        /*         Vector3d x3 = Pos.row(F(i2, unique_i2_point)); */
 
-                int particleIdx[4] = {
-                    F(i, unique_i_point),
-                    F(i, (unique_i_point+1)%3),
-                    F(i, (unique_i_point+2)%3),
-                    F(i2, unique_i2_point)
-                };
+        /*         int particleIdx[4] = { */
+        /*             F(i, unique_i_point), */
+        /*             F(i, (unique_i_point+1)%3), */
+        /*             F(i, (unique_i_point+2)%3), */
+        /*             F(i2, unique_i2_point) */
+        /*         }; */
 
-                Vector3d nA = (x2 - x0).cross(x1 - x0);
-                Vector3d nB = (x1 - x3).cross(x2 - x3);
-                Vector3d e = x1 - x2;
+        /*         Vector3d nA = (x2 - x0).cross(x1 - x0); */
+        /*         Vector3d nB = (x1 - x3).cross(x2 - x3); */
+        /*         Vector3d e = x1 - x2; */
 
-                double sinT = (nA.normalized().cross(nB.normalized()).dot(e.normalized()));
-                double cosT = (nA.normalized().dot(nB.normalized()));
-                double theta = atan2(sinT, cosT);
-                double C = theta;
+        /*         double sinT = (nA.normalized().cross(nB.normalized()).dot(e.normalized())); */
+        /*         double cosT = (nA.normalized().dot(nB.normalized())); */
+        /*         double theta = atan2(sinT, cosT); */
+        /*         double C = theta; */
 
-                MatrixX3d qA(4, 3);
-                qA.setZero();
-                qA.row(0) = x2 - x1;
-                qA.row(1) = x0 - x2;
-                qA.row(2) = x1 - x0;
+        /*         MatrixX3d qA(4, 3); */
+        /*         qA.setZero(); */
+        /*         qA.row(0) = x2 - x1; */
+        /*         qA.row(1) = x0 - x2; */
+        /*         qA.row(2) = x1 - x0; */
 
-                MatrixX3d qB(4, 3);
-                qB.setZero();
-                qB.row(1) = x2 - x3;
-                qB.row(2) = x3 - x1;
-                qB.row(3) = x1 - x2;
+        /*         MatrixX3d qB(4, 3); */
+        /*         qB.setZero(); */
+        /*         qB.row(1) = x2 - x3; */
+        /*         qB.row(2) = x3 - x1; */
+        /*         qB.row(3) = x1 - x2; */
 
-                Vector4d qe(0, 1, -1, 0);
+        /*         Vector4d qe(0, 1, -1, 0); */
 
-                MatrixX4d dqA(4, 4);
-                dqA.setZero();
-                dqA.row(0) = Vector4d( 0, -1,  1,  0);
-                dqA.row(1) = Vector4d( 1,  0, -1,  0);
-                dqA.row(2) = Vector4d(-1,  1,  0,  0);
-                dqA.row(3) = Vector4d( 0,  0,  0,  0);
+        /*         MatrixX4d dqA(4, 4); */
+        /*         dqA.setZero(); */
+        /*         dqA.row(0) = Vector4d( 0, -1,  1,  0); */
+        /*         dqA.row(1) = Vector4d( 1,  0, -1,  0); */
+        /*         dqA.row(2) = Vector4d(-1,  1,  0,  0); */
+        /*         dqA.row(3) = Vector4d( 0,  0,  0,  0); */
 
-                MatrixX4d dqB(4, 4);
-                dqB.setZero();
-                dqA.row(0) = Vector4d( 0,  0,  0,  0);
-                dqA.row(1) = Vector4d( 0,  0,  1, -1);
-                dqA.row(2) = Vector4d( 0, -1,  0,  1);
-                dqA.row(3) = Vector4d( 0,  1, -1,  0);
+        /*         MatrixX4d dqB(4, 4); */
+        /*         dqB.setZero(); */
+        /*         dqA.row(0) = Vector4d( 0,  0,  0,  0); */
+        /*         dqA.row(1) = Vector4d( 0,  0,  1, -1); */
+        /*         dqA.row(2) = Vector4d( 0, -1,  0,  1); */
+        /*         dqA.row(3) = Vector4d( 0,  1, -1,  0); */
 
-                /**
-                 * d2nadxmsnt
-                 * d2nbdxmsnt
-                 */
-
-                for (int m = 0; m < 4; m++) {
-                    Vector3d dCdxm;
-                    for (int n = 0; n < 4; n++) {
-                        Vector3d dCdxn;
-                        MatrixX3d d2Cdxmn(3, 3);
-                        d2Cdxmn.setZero();
-                        for (int s = 0; s < 3; s++) {
-                            Vector3d dnadxms = S_s(qA.row(m), s);
-                            Vector3d dnbdxms = S_s(qB.row(m), s);
-                            Vector3d dedxms = qe[m] * MatrixXd::Identity(3, 3).row(s);
-                            Vector3d dnhatadxms = dnadxms / nA.norm();
-                            Vector3d dnhatbdxms = dnbdxms / nB.norm();
-                            Vector3d dehatdxms = dedxms / e.norm();
-                            double dcosTdxms = dnhatadxms.dot(nB.normalized())
-                                + nA.normalized().dot(dnhatbdxms);
-                            double dsinTdxms = (
-                                    dnhatadxms.cross(nB.normalized())
-                                    + nA.normalized().cross(dnhatbdxms)
-                                    ).dot(e.normalized())
-                                + (nA.normalized().cross(nB.normalized()).dot(dehatdxms));
-                            dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms;
-                            for (int t = 0; t < 3; t++)  {
-                                Vector3d dnadxnt = S_s(qA.row(n), t);
-                                Vector3d dnbdxnt = S_s(qB.row(n), t);
-                                Vector3d dedxnt = qe[n] * MatrixXd::Identity(3, 3).row(t);
-                                Vector3d dnhatadxnt = dnadxnt / nA.norm();
-                                Vector3d dnhatbdxnt = dnbdxnt / nB.norm();
-                                Vector3d dehatdxnt = dedxnt / e.norm();
-                                double dcosTdxnt = dnhatadxnt.dot(nB.normalized())
-                                    + nA.normalized().dot(dnhatbdxnt);
-                                double dsinTdxnt = (
-                                        dnhatadxnt.cross(nB.normalized())
-                                        + nA.normalized().cross(dnhatbdxnt)
-                                        ).dot(e.normalized())
-                                    + (nA.normalized().cross(nB.normalized()).dot(dehatdxnt));
-                                dCdxn[t] = cosT * dsinTdxnt - sinT * dcosTdxnt;
+        /*         for (int m = 0; m < 4; m++) { */
+        /*             Vector3d dCdxm; */
+        /*             for (int n = 0; n < 4; n++) { */
+        /*                 Vector3d dCdxn; */
+        /*                 MatrixX3d d2Cdxmn(3, 3); */
+        /*                 d2Cdxmn.setZero(); */
+        /*                 for (int s = 0; s < 3; s++) { */
+        /*                     Vector3d dnadxms = S_s(qA.row(m), s); */
+        /*                     Vector3d dnbdxms = S_s(qB.row(m), s); */
+        /*                     Vector3d dedxms = qe[m] * MatrixXd::Identity(3, 3).row(s); */
+        /*                     Vector3d dnhatadxms = dnadxms / nA.norm(); */
+        /*                     Vector3d dnhatbdxms = dnbdxms / nB.norm(); */
+        /*                     Vector3d dehatdxms = dedxms / e.norm(); */
+        /*                     double dcosTdxms = dnhatadxms.dot(nB.normalized()) */
+        /*                         + nA.normalized().dot(dnhatbdxms); */
+        /*                     double dsinTdxms = ( */
+        /*                             dnhatadxms.cross(nB.normalized()) */
+        /*                             + nA.normalized().cross(dnhatbdxms) */
+        /*                             ).dot(e.normalized()) */
+        /*                         + (nA.normalized().cross(nB.normalized()).dot(dehatdxms)); */
+        /*                     dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms; */
+        /*                     for (int t = 0; t < 3; t++)  { */
+        /*                         Vector3d dnadxnt = S_s(qA.row(n), t); */
+        /*                         Vector3d dnbdxnt = S_s(qB.row(n), t); */
+        /*                         Vector3d dedxnt = qe[n] * MatrixXd::Identity(3, 3).row(t); */
+        /*                         Vector3d dnhatadxnt = dnadxnt / nA.norm(); */
+        /*                         Vector3d dnhatbdxnt = dnbdxnt / nB.norm(); */
+        /*                         Vector3d dehatdxnt = dedxnt / e.norm(); */
+        /*                         double dcosTdxnt = dnhatadxnt.dot(nB.normalized()) */
+        /*                             + nA.normalized().dot(dnhatbdxnt); */
+        /*                         double dsinTdxnt = ( */
+        /*                                 dnhatadxnt.cross(nB.normalized()) */
+        /*                                 + nA.normalized().cross(dnhatbdxnt) */
+        /*                                 ).dot(e.normalized()) */
+        /*                             + (nA.normalized().cross(nB.normalized()).dot(dehatdxnt)); */
+        /*                         dCdxn[t] = cosT * dsinTdxnt - sinT * dcosTdxnt; */
 
 
-                                Vector3d dqamdxnt;
-                                dqamdxnt.setZero();
-                                dqamdxnt[t] = dqA(m, n);
+        /*                         Vector3d dqamdxnt; */
+        /*                         dqamdxnt.setZero(); */
+        /*                         dqamdxnt[t] = dqA(m, n); */
 
-                                Vector3d dqbmdxnt;
-                                dqbmdxnt.setZero();
-                                dqbmdxnt[t] = dqB(m, n);
+        /*                         Vector3d dqbmdxnt; */
+        /*                         dqbmdxnt.setZero(); */
+        /*                         dqbmdxnt[t] = dqB(m, n); */
 
-                                Vector3d d2nadxmsnt = S_s(dqamdxnt, s);
-                                Vector3d d2nbdxmsnt = S_s(dqbmdxnt, s);
+        /*                         Vector3d d2nadxmsnt = S_s(dqamdxnt, s); */
+        /*                         Vector3d d2nbdxmsnt = S_s(dqbmdxnt, s); */
 
-                                Vector3d d2nhatadxmsnt = d2nadxmsnt / nA.norm();
-                                Vector3d d2nhatbdxmsnt = d2nbdxmsnt / nB.norm();
-                                /* Vector3d d2ehatdxmsnt; */
-                                /* d2ehatdxmsnt.setZero(); */
+        /*                         Vector3d d2nhatadxmsnt = d2nadxmsnt / nA.norm(); */
+        /*                         Vector3d d2nhatbdxmsnt = d2nbdxmsnt / nB.norm(); */
+        /*                         /1* Vector3d d2ehatdxmsnt; *1/ */
+        /*                         /1* d2ehatdxmsnt.setZero(); *1/ */
 
-                                double d2cosTdxmsnt = d2nhatadxmsnt.dot(nB.normalized())
-                                    + dnhatbdxnt.dot(dnhatadxms)
-                                    + dnhatadxnt.dot(dnhatbdxms)
-                                    + nA.normalized().dot(d2nhatbdxmsnt);
+        /*                         double d2cosTdxmsnt = d2nhatadxmsnt.dot(nB.normalized()) */
+        /*                             + dnhatbdxnt.dot(dnhatadxms) */
+        /*                             + dnhatadxnt.dot(dnhatbdxms) */
+        /*                             + nA.normalized().dot(d2nhatbdxmsnt); */
 
-                                double d2sinTdxmsnt = (
-                                        d2nhatadxmsnt.cross(nB.normalized())
-                                        + dnhatadxms.cross(dnhatbdxnt)
-                                        + dnhatadxnt.cross(dnhatbdxms)
-                                        + nA.normalized().cross(d2nhatbdxmsnt)
-                                        ).dot(e.normalized())
-                                    + (
-                                            dnhatadxms.cross(nB.normalized())
-                                            + nA.normalized().cross(dnhatbdxms)
-                                      ).dot(dehatdxnt)
-                                    + (
-                                            dnhatadxnt.cross(nB.normalized())
-                                            + nA.normalized().cross(dnhatbdxnt)
-                                      ).dot(dehatdxms);
-                                    /* + (nA.normalized().cross(nB.normalized())) */
-                                    /* * d2ehatdxmsnt; */
+        /*                         double d2sinTdxmsnt = ( */
+        /*                                 d2nhatadxmsnt.cross(nB.normalized()) */
+        /*                                 + dnhatadxms.cross(dnhatbdxnt) */
+        /*                                 + dnhatadxnt.cross(dnhatbdxms) */
+        /*                                 + nA.normalized().cross(d2nhatbdxmsnt) */
+        /*                                 ).dot(e.normalized()) */
+        /*                             + ( */
+        /*                                     dnhatadxms.cross(nB.normalized()) */
+        /*                                     + nA.normalized().cross(dnhatbdxms) */
+        /*                               ).dot(dehatdxnt) */
+        /*                             + ( */
+        /*                                     dnhatadxnt.cross(nB.normalized()) */
+        /*                                     + nA.normalized().cross(dnhatbdxnt) */
+        /*                               ).dot(dehatdxms); */
+        /*                             /1* + (nA.normalized().cross(nB.normalized())) *1/ */
+        /*                             /1* * d2ehatdxmsnt; *1/ */
 
-                                d2Cdxmn(s, t) = cosT * d2sinTdxmsnt
-                                    - sinT * d2cosTdxmsnt
-                                    + (sinT * sinT - cosT * cosT) *
-                                        (dsinTdxms * dcosTdxnt + dcosTdxms * dsinTdxnt)
-                                    + 2 * sinT * cosT *
-                                        (
-                                            dcosTdxms * dcosTdxnt - dsinTdxms * dsinTdxnt
-                                        );
+        /*                         d2Cdxmn(s, t) = cosT * d2sinTdxmsnt */
+        /*                             - sinT * d2cosTdxmsnt */
+        /*                             + (sinT * sinT - cosT * cosT) * */
+        /*                                 (dsinTdxms * dcosTdxnt + dcosTdxms * dsinTdxnt) */
+        /*                             + 2 * sinT * cosT * */
+        /*                                 ( */
+        /*                                     dcosTdxms * dcosTdxnt - dsinTdxms * dsinTdxnt */
+        /*                                 ); */
                             
-                            }
-                        }
-                        df_bend.block<3, 3>(particleIdx[m] * 3, particleIdx[n] * 3) +=
-                            -g_cloth->kbend * (dCdxm * dCdxn.transpose() + d2Cdxmn * C);
-                    }
-                }
-            }
-        }
+        /*                     } */
+        /*                 } */
+        /*                 df_bend.block<3, 3>(particleIdx[m] * 3, particleIdx[n] * 3) += */
+        /*                     -g_cloth->kbend * (dCdxm * dCdxn.transpose() + d2Cdxmn * C); */
+        /*             } */
+        /*         } */
+        /*     } */
+        /* } */
     }
 
     return df_stretch + df_shear + df_bend;
