@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <string>
-#include <Eigen/Core>
-#include <Eigen/Geometry>
+#include "../lib/eigen3/Eigen/Core"
+#include "../lib/eigen3/Eigen/Geometry"
 #include <glm/glm.hpp>
 
 using namespace Eigen;

@@ -17,9 +17,7 @@
 #include <atomic>
 #include "camera.h"
 #include "simulation.h"
-#include <Eigen/Core>
-
-#include <igl/viewer/Viewer.h>
+#include "../lib/eigen3/Eigen/Core"
 
 #define RENDER_STEPS 2
 
@@ -204,7 +202,6 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 mutex renderLock;
 
 int main(int argc, char* argv[]) {
-    igl::viewer::Viewer viewer;
     string window_title = "Cloth";
     if (!glfwInit()) exit(EXIT_FAILURE);
     sim = make_shared<Simulation>(&renderLock);
@@ -396,9 +393,6 @@ int main(int argc, char* argv[]) {
     Eigen::MatrixXd Verts;
     Eigen::MatrixXi Faces;
     sim->generate_libigl_geometry(Verts, Faces);
-    viewer.data.set_mesh(Verts, Faces);
-    viewer.data.set_face_based(true);
-    /* viewer.launch(); */
     while (!glfwWindowShouldClose(window)) {
         // Setup some basic window stuff.
         glfwGetFramebufferSize(window, &window_width, &window_height);
@@ -430,7 +424,6 @@ int main(int argc, char* argv[]) {
             sim->generate_libigl_geometry(Verts, Faces);
             shouldRender.store(false);
             
-            viewer.data.set_mesh(Verts, Faces);
         }
         renderLock.unlock();
 
