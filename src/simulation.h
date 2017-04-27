@@ -17,24 +17,30 @@ using namespace std;
 
 class Simulation {
 public:
-    Simulation(mutex *renderLock);
+    Simulation();
     ~Simulation();
     void takeSimulationStep();
     void numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev);
     void generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
-    void generate_libigl_geometry(MatrixXd&, MatrixXi&);
+    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&);
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
-    double timeStep = .0003;
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
     static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
+    void reset();
+
+    double timeStep = .0003;
+    double grav = 9.81;
+    bool F_GRAV = true;
+    bool F_STRETCH = true;
+    bool F_SHEAR = true;
+    bool F_BEND = true;
+    bool paused = false;
 
 private:
     shared_ptr<Cloth> g_cloth;
     shared_ptr<Sphere> g_sphere;
-    mutex *renderLock;
-    double grav = 9.81;
 };
 
 #endif

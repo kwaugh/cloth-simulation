@@ -8,7 +8,7 @@ using namespace std;
 using namespace glm;
 using namespace Eigen;
 
-Simulation::Simulation(mutex *renderLock) : renderLock(renderLock) {
+Simulation::Simulation() {
     string vCloth = "4";
     g_cloth = make_shared<Cloth>("../src/resources/cloth." + vCloth + ".node",
             "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-1, 0, .5));
@@ -27,7 +27,7 @@ void Simulation::generate_geometry(vector<vec4>& obj_vertices,
     /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
 }
 
-void Simulation::generate_libigl_geometry(MatrixXd& Verts, MatrixXi& Faces) {
+void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) {
     g_cloth->generate_libigl_geometry(Verts, Faces);
 }
 
@@ -35,9 +35,7 @@ void Simulation::takeSimulationStep() {
     VectorXd q, v, qprev;
     g_cloth->buildConfiguration(q, v, qprev);
     numericalIntegration(q, v, qprev);
-    renderLock->lock();
     g_cloth->unpackConfiguration(q, v, qprev);
-    renderLock->unlock();
 }
 
 void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
@@ -85,11 +83,15 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
 
 VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     VectorXd Force_Stretch(q.size());
-    Force_Stretch.setZero();
     VectorXd Force_Shear(q.size());
-    Force_Shear.setZero();
     VectorXd Force_Bend(q.size());
+    VectorXd Force_Gravity(q.size());
+
+    Force_Stretch.setZero();
+    Force_Shear.setZero();
     Force_Bend.setZero();
+    Force_Gravity.setZero();
+
     VectorXd massVec = g_cloth->getMassVector();
     auto F = g_cloth->F;
     auto V = g_cloth->V;
@@ -116,7 +118,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
         dwdxx(1, 1) = (-deltau2)          / (deltau1 * deltav2 - deltau2 * deltav1);
         dwdxx(1, 2) = (deltau1)           / (deltau1 * deltav2 - deltau2 * deltav1);
 
-        /* stretch */ {
+        if (F_STRETCH) {
             Vector2d C;
             C[0] = alpha * (w_u.norm() - 1);
             C[1] = alpha * (w_v.norm() - 1);
@@ -135,7 +137,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
             Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
             Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
         }
-        /* shear */ {
+        if (F_SHEAR) {
             double C = alpha * w_u.dot(w_v);
             Vector3d dCdx0(
                     alpha * (dwdxx(0, 0) * w_v[0] + dwdxx(1, 0) * w_u[0]),
@@ -157,7 +159,7 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
             Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
             Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
         }
-        /* bending */ {
+        if (F_BEND) {
             for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
                 int i2 = g_cloth->adjacentFaces[i][j];
                 int unique_i_point = 0;
@@ -242,10 +244,10 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
     /* for (int i = 1; i < q.size(); i += 3) { */
     /*     F[i] += -9.8 * denseM(i/3, i/3); //this should be int div */
     /* } */
-    VectorXd Force_Gravity(q.size());
-    Force_Gravity.setZero();
-    for (int i = 1; i < q.size(); i+=3) {
-        Force_Gravity[i] += -grav * massVec[i / 3];
+    if (F_GRAV) {
+        for (int i = 1; i < q.size(); i+=3) {
+            Force_Gravity[i] += -grav * massVec[i / 3];
+        }
     }
 
     /* cout << "Grav: " << Force_Gravity.segment<3>(0).norm() << endl; */
@@ -256,11 +258,13 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
 
 MatrixXd Simulation::computeDF(VectorXd q) {
     MatrixXd df_stretch(q.size(), q.size());
-    df_stretch.setZero();
     MatrixXd df_shear(q.size(), q.size());
-    df_shear.setZero();
     MatrixXd df_bend(q.size(), q.size());
+
+    df_stretch.setZero();
+    df_shear.setZero();
     df_bend.setZero();
+
     auto F = g_cloth->F;
     auto V = g_cloth->V;
     auto Pos = g_cloth->Pos;
@@ -286,7 +290,7 @@ MatrixXd Simulation::computeDF(VectorXd q) {
         dwdxx(1, 1) = (-deltau2)          / (deltau1 * deltav2 - deltau2 * deltav1);
         dwdxx(1, 2) = (deltau1)           / (deltau1 * deltav2 - deltau2 * deltav1);
 
-        /* stretch */ {
+        if (F_STRETCH) {
             Vector2d C;
             C[0] = alpha * (w_u.norm() - 1);
             C[1] = alpha * (w_v.norm() - 1);
@@ -315,7 +319,7 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 }
             }
         }
-        /* shear */ {
+        if (F_SHEAR) {
             double C = alpha * w_u.dot(w_v);
             MatrixX3d dCdx(3, 3);
             dCdx.row(0) = Vector3d(
@@ -343,7 +347,7 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 }
             }
         }
-        /* bending */ {
+        if (F_BEND) {
             for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
                 int i2 = g_cloth->adjacentFaces[i][j];
                 int unique_i_point = 0;
@@ -514,4 +518,12 @@ const Matrix3d Simulation::S(const Eigen::Vector3d &v) {
 }
 const Vector3d Simulation::S_s(const Eigen::Vector3d &v, int index) {
     return S(v).row(index);
+}
+
+void Simulation::reset() {
+    string vCloth = "4";
+    g_cloth = make_shared<Cloth>("../src/resources/cloth." + vCloth + ".node",
+            "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-1, 0, .5));
+    g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
+            "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
 }
