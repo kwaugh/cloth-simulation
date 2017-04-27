@@ -8,7 +8,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # Flags
 #set(CMAKE_CXX_FLAGS "--std=c++11 -g -fmax-errors=1")
 # it should use openmp by default
-set(CMAKE_CXX_FLAGS "--std=c++11 -g -fopenmp -Wno-sign-compare")
+if (APPLE)
+    set(CMAKE_CXX_FLAGS "--std=c++11 -g -Wno-sign-compare")
+else(APPLE)
+    set(CMAKE_CXX_FLAGS "--std=c++11 -g -fopenmp -Wno-sign-compare")
+endif(APPLE)
 #set(CMAKE_CXX_FLAGS "--std=c++11 -g -pg")
 #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 #SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")

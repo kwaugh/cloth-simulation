@@ -44,10 +44,10 @@ public:
     SparseMatrix<double> getInverseMassMatrix() { return Minv; }
     VectorXd getMassVector() { return massVec; }
 
-    static constexpr double density = 0.1;
-    static constexpr double kstretch = 5.0e3;
-    static constexpr double kshear = 0.5e3;
-    static constexpr double kbend = 0.01e-3;
-    static constexpr double kdamp = 0.2;
+    const double density = 0.1;
+    const double kstretch = 5.0e3;
+    const double kshear = 0.5e3;
+    const double kbend = 0.01e-3;
+    const double kdamp = 0.2;
 };
 #endif
