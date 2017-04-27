@@ -138,7 +138,7 @@ void Cloth::generate_geometry(vector<vec4>& obj_vertices,
     }
 }
 
-void Cloth::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) {
+void Cloth::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) const {
     Verts = Pos;
     Faces = F;
 }

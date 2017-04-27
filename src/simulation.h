@@ -23,7 +23,7 @@ public:
     void numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev);
     void generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
-    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&);
+    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&) const;
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);

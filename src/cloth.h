@@ -22,7 +22,7 @@ public:
     ~Cloth();
     void generate_geometry(vector<glm::vec4>&,
         vector<glm::uvec3>&, vector<glm::vec4>&) const;
-    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&);
+    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&) const;
     MatrixX3d Pos; 
     MatrixX2d V; 
     MatrixX3d oldPos; 

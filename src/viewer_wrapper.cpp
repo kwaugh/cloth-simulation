@@ -11,85 +11,87 @@ using namespace Eigen;
 
 // anonymous namespace to handle LibIGL viewer.
 namespace {
+    bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
+            Simulation *sim) {
+        switch (key) {
+            case ' ':
+                sim->paused = !sim->paused;
+                break;
+            case 'R':
+                sim->reset();
+                break;
+        }
+        return false;
+    }
 
-bool key_down(igl::viewer::Viewer& viewer, unsigned char key, int mod,
-              Simulation *sim) {
-  if (key == ' ')
-    sim->paused = !sim->paused;
-  else if (key == 'R')
-    sim->reset();
+    bool init(igl::viewer::Viewer& viewer, Simulation *sim) {
+        viewer.ngui->addWindow(Vector2i(220, 10), "Cloth Simulation");
 
-  return false;
-}
+        // Simulation environment variables.
+        viewer.ngui->addGroup("Simulation Parameters");
+        viewer.ngui->addVariable("Time Step",                  sim->timeStep);
+        viewer.ngui->addVariable<bool>("Gravity Force",        sim->F_GRAV);
+        viewer.ngui->addVariable<bool>("Stretch Force",        sim->F_STRETCH);
+        viewer.ngui->addVariable<bool>("Shear Force",          sim->F_SHEAR);
+        viewer.ngui->addVariable<bool>("Bend Force",           sim->F_BEND);
 
-bool init(igl::viewer::Viewer& viewer, Simulation *sim) {
-  viewer.ngui->addWindow(Vector2i(220, 10), "SPH Fluid Simulation");
+        // Simulation controls..
+        viewer.ngui->addGroup("Simulation Controls");
+        viewer.ngui->addButton("Toggle Simulation",
+                [sim](){ sim->paused = !sim->paused; });
+        viewer.ngui->addButton("Reset Simulation",
+                [sim](){ sim->reset(); });
 
-  // Simulation environment variables.
-  viewer.ngui->addGroup("Simulation Parameters");
-  viewer.ngui->addVariable("Time Step",                  sim->timeStep);
-  viewer.ngui->addVariable<bool>("Gravity Force",        sim->F_GRAV);
-  viewer.ngui->addVariable<bool>("Stretch Force",        sim->F_STRETCH);
-  viewer.ngui->addVariable<bool>("Shear Force",          sim->F_SHEAR);
-  viewer.ngui->addVariable<bool>("Bend Force",           sim->F_BEND);
+        // Generate widgets.
+        viewer.screen->performLayout();
 
-  // Simulation controls..
-  viewer.ngui->addGroup("Simulation Controls");
-  viewer.ngui->addButton("Toggle Simulation",
-                         [sim](){ sim->paused = !sim->paused; });
-  viewer.ngui->addButton("Reset Simulation",
-                         [sim](){ sim->reset(); });
+        return false;
+    }
 
-  // Generate widgets.
-  viewer.screen->performLayout();
+    bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
+        // Take a step.
+        if (!sim->paused)
+            sim->takeSimulationStep();
 
-  return false;
-}
+        // Get the current mesh of the simulation.
+        MatrixX3d V;
+        MatrixX3i F;
+        /* VectorXd V_rho; */
+        /* sim->render(V, F, V_rho); */
+        sim->generate_libigl_geometry(V, F);
 
-bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
-  // Take a step.
-  if (!sim->paused)
-    sim->takeSimulationStep();
+        /* MatrixX3d VC; */
+        /* igl::jet(V_rho, true, VC); */
 
-  // Get the current mesh of the simulation.
-  MatrixX3d V;
-  MatrixX3i F;
-  /* VectorXd V_rho; */
-  /* sim->render(V, F, V_rho); */
-  sim->generate_libigl_geometry(V, F);
+        /* MatrixX3d P; */
+        /* MatrixX2i E; */
+        /* MatrixX3d EC; */
+        /* sim->getBounds(P, E, EC); */
 
-  /* MatrixX3d VC; */
-  /* igl::jet(V_rho, true, VC); */
+        // Update the viewer.
+        viewer.data.clear();
+        /* viewer.data.set_edges(P, E, EC); */
+        viewer.data.set_mesh(V, F);
+        /* viewer.data.set_colors(VC); */
+        viewer.core.align_camera_center(V, F);
 
-  /* MatrixX3d P; */
-  /* MatrixX2i E; */
-  /* MatrixX3d EC; */
-  /* sim->getBounds(P, E, EC); */
+        // Signal to render.
+        glfwPostEmptyEvent();
 
-  // Update the viewer.
-  viewer.data.clear();
-  /* viewer.data.set_edges(P, E, EC); */
-  viewer.data.set_mesh(V, F);
-  /* viewer.data.set_colors(VC); */
-  viewer.core.align_camera_center(V, F);
-
-  // Signal to render.
-  glfwPostEmptyEvent();
-
-  return false;
-}
+        return false;
+    }
 
 } // end anonymous namespace to handle LibIGL viewer.
 
 void ViewerWrapper::start() {
-  igl::viewer::Viewer viewer;
-  viewer.callback_key_down = bind(key_down,
-                                  placeholders::_1,
-                                  placeholders::_2,
-                                  placeholders::_3,
-                                  sim_);
-  viewer.callback_init = bind(init, placeholders::_1, sim_);
-  viewer.callback_post_draw = bind(post_draw, placeholders::_1, sim_);
+    igl::viewer::Viewer viewer;
+    viewer.callback_key_down = bind(key_down,
+            placeholders::_1,
+            placeholders::_2,
+            placeholders::_3,
+            sim_);
+    viewer.callback_init = bind(init, placeholders::_1, sim_);
+    viewer.callback_post_draw = bind(post_draw, placeholders::_1, sim_);
 
-  viewer.launch();
+    viewer.launch();
 }
