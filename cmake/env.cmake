@@ -29,3 +29,20 @@ if (APPLE)
 	FIND_LIBRARY(CoreVideo_LIBRARY CoreVideo REQUIRED)
 	LIST(APPEND stdgl_libraries iconv ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${CoreVideo_LIBRARY})
 endif(APPLE)
+
+FIND_PACKAGE(LIBIGL REQUIRED)
+
+if (NOT LIBIGL_FOUND)
+   message(FATAL_ERROR "libigl not found.")
+endif()
+
+option(LIBIGL_WITH_NANOGUI     "Use Nanogui menu"   ON)
+option(LIBIGL_WITH_VIEWER      "Use OpenGL viewer"  ON)
+option(LIBIGL_WITH_OPENGL      "Use OpenGL"         ON)
+option(LIBIGL_WITH_OPENGL_GLFW "Use GLFW"           ON)
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/lib/libigl/shared/cmake" "libigl")
+
+# Prepare the build environment
+include_directories(${LIBIGL_INCLUDE_DIRS})
+add_definitions(${LIBIGL_DEFINITIONS})
