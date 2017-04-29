@@ -34,6 +34,7 @@ namespace {
         viewer.ngui->addVariable<bool>("Stretch Force",        sim->F_STRETCH);
         viewer.ngui->addVariable<bool>("Shear Force",          sim->F_SHEAR);
         viewer.ngui->addVariable<bool>("Bend Force",           sim->F_BEND);
+        viewer.ngui->addVariable<int>("Cloth Version",         sim->vCloth);
 
         // Simulation controls..
         viewer.ngui->addGroup("Simulation Controls");
@@ -48,35 +49,49 @@ namespace {
         return false;
     }
 
-    bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
-        // Take a step.
-        if (!sim->paused)
-            sim->takeSimulationStep();
-
+    bool pre_draw(igl::viewer::Viewer& viewer, Simulation *sim, mutex* renderLock) {
         // Get the current mesh of the simulation.
+        renderLock->lock();
         MatrixX3d V;
         MatrixX3i F;
-        /* VectorXd V_rho; */
-        /* sim->render(V, F, V_rho); */
         sim->generate_libigl_geometry(V, F);
-
-        /* MatrixX3d VC; */
-        /* igl::jet(V_rho, true, VC); */
-
-        /* MatrixX3d P; */
-        /* MatrixX2i E; */
-        /* MatrixX3d EC; */
-        /* sim->getBounds(P, E, EC); */
 
         // Update the viewer.
         viewer.data.clear();
-        /* viewer.data.set_edges(P, E, EC); */
         viewer.data.set_mesh(V, F);
-        /* viewer.data.set_colors(VC); */
-        viewer.core.align_camera_center(V, F);
+        /* viewer.core.align_camera_center(V, F); */
 
         // Signal to render.
+        renderLock->unlock();
         glfwPostEmptyEvent();
+
+        return false;
+    }
+
+    bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim, mutex* renderLock) {
+        // Take a step.
+        renderLock->lock();
+
+        if (!sim->paused) {
+            /* sim->runCount++; */
+            sim->takeSimulationStep();
+            /* cout << sim->runCount << endl; */
+        }
+
+        // Get the current mesh of the simulation.
+        /* MatrixX3d V; */
+        /* MatrixX3i F; */
+        /* sim->generate_libigl_geometry(V, F); */
+
+        /* // Update the viewer. */
+        /* viewer.data.clear(); */
+        /* viewer.data.set_mesh(V, F); */
+        /* viewer.core.align_camera_center(V, F); */
+
+        // Signal to render.
+        /* glfwPostEmptyEvent(); */
+
+        renderLock->unlock();
 
         return false;
     }
@@ -91,7 +106,8 @@ void ViewerWrapper::start() {
             placeholders::_3,
             sim_);
     viewer.callback_init = bind(init, placeholders::_1, sim_);
-    viewer.callback_post_draw = bind(post_draw, placeholders::_1, sim_);
+    viewer.callback_pre_draw = bind(pre_draw, placeholders::_1, sim_, &renderLock);
+    viewer.callback_post_draw = bind(post_draw, placeholders::_1, sim_, &renderLock);
 
     viewer.launch();
 }

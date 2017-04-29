@@ -9,9 +9,12 @@ using namespace glm;
 using namespace Eigen;
 
 Simulation::Simulation() {
-    string vCloth = "4";
-    g_cloth = make_shared<Cloth>("../src/resources/cloth." + vCloth + ".node",
-            "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-1, 0, .5));
+    reset();
+}
+
+void Simulation::reset() {
+    g_cloth = make_shared<Cloth>("../src/resources/cloth." + to_string(vCloth) + ".node",
+            "../src/resources/cloth." + to_string(vCloth) + ".ele", 1, Vector3d(-1, 0, .5));
     g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
             "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
 }
@@ -34,7 +37,22 @@ void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) co
 void Simulation::takeSimulationStep() {
     VectorXd q, v, qprev;
     g_cloth->buildConfiguration(q, v, qprev);
+    /* qprev doesn't get set until this following line */
     numericalIntegration(q, v, qprev);
+    VectorXd q_cand, v_cand;
+    q_cand = q;
+    v_cand = v;
+    VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
+    /* check for collisions */
+    /* auto F = g_cloth->F.size(); */
+    /* for (int i = 0; i < F.rows(); i++) { */
+    /*     for (uint j = 0; j < q_cand.size(); j++) { */
+    /*         /1* if (q_cand[j] == F(i, 0) || q_cand[j] == F(i, 1) || q_cand[j] == F(i, 2)) *1/ */
+    /*         /1*     continue; *1/ */
+    /*         /1* if (pointPlaneDist()) *1/ */
+    /*     } */
+    /* } */ 
+
     g_cloth->unpackConfiguration(q, v, qprev);
 }
 
@@ -47,6 +65,7 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
     SparseMatrix<double> M = g_cloth->getMassMatrix();
     SparseMatrix<double> Minv = g_cloth->getInverseMassMatrix();
 
+    qprev = q;
     VectorXd guessQ = q;
     int i;
     for (i = 0; i < 20; i++) {
@@ -380,10 +399,20 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 Vector3d nA = (x2 - x0).cross(x1 - x0);
                 Vector3d nB = (x1 - x3).cross(x2 - x3);
                 Vector3d e = x1 - x2;
+                /* cout << "nA.norm(): " << nA.norm() << endl; */
+                /* cout << "nB.norm(): " << nB.norm() << endl; */
+                /* cout << "e.norm(): " << e.norm() << endl; */
+                /* if (nB.norm() > 5) { */
+                /*     cout << "x0: " << x0 << endl; */
+                /*     cout << "x1: " << x1 << endl; */
+                /*     cout << "x2: " << x2 << endl; */
+                /*     cout << "x3: " << x3 << endl; */
+                /* } */
 
                 double sinT = (nA.normalized().cross(nB.normalized()).dot(e.normalized()));
                 double cosT = (nA.normalized().dot(nB.normalized()));
                 double theta = atan2(sinT, cosT);
+                /* cout << "theta: " << theta << endl; */
                 double C = theta;
 
                 MatrixX3d qA(4, 3);
@@ -520,10 +549,81 @@ const Vector3d Simulation::S_s(const Eigen::Vector3d &v, int index) {
     return S(v).row(index);
 }
 
-void Simulation::reset() {
-    string vCloth = "4";
-    g_cloth = make_shared<Cloth>("../src/resources/cloth." + vCloth + ".node",
-            "../src/resources/cloth." + vCloth + ".ele", 1, Vector3d(-1, 0, .5));
-    g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
-            "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
+inline double Simulation::pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3) {
+    Vector3d unitNorm = (x2 - x1).cross(x3 - x1).normalized();
+    return abs(unitNorm.dot(x0 - x1));
 }
+// dist3D_Segment_to_Segment(): get the 3D minimum distance between 2 segments
+//    Input:  two 3D line segments S1 and S2
+//    Return: the shortest distance between S1 and S2
+/* double dist3D_Segment_to_Segment(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3) { */
+/*     double SMALL_NUM = 0.00001; */
+/*     Vector3d u = x1 - x0; */
+/*     Vector3d v = x3 - x2; */
+/*     Vector3d w = x0 - x2; */
+/*     double a = u.dot(u);         // always >= 0 */
+/*     double b = u.dot(v); */
+/*     double c = v.dot(v);         // always >= 0 */
+/*     double d = u.dot(w); */
+/*     double e = v.dot(w); */
+/*     double D = a*c - b*b;        // always >= 0 */
+/*     double sc, sN, sD; */
+/*     sc = sN = sD = D;       // sc = sN / sD, default sD = D >= 0 */
+/*     double tc, tN, tD; */
+/*     tc = tN = tD = D;       // tc = tN / tD, default tD = D >= 0 */
+
+/*     // compute the line parameters of the two closest points */
+/*     if (D < SMALL_NUM) { // the lines are almost parallel */
+/*         sN = 0.0;         // force using point P0 on segment S1 */
+/*         sD = 1.0;         // to prevent possible division by 0.0 later */
+/*         tN = e; */
+/*         tD = c; */
+/*     } */
+/*     else {                 // get the closest points on the infinite lines */
+/*         sN = (b*e - c*d); */
+/*         tN = (a*e - b*d); */
+/*         if (sN < 0.0) {        // sc < 0 => the s=0 edge is visible */
+/*             sN = 0.0; */
+/*             tN = e; */
+/*             tD = c; */
+/*         } */
+/*         else if (sN > sD) {  // sc > 1  => the s=1 edge is visible */
+/*             sN = sD; */
+/*             tN = e + b; */
+/*             tD = c; */
+/*         } */
+/*     } */
+
+/*     if (tN < 0.0) {            // tc < 0 => the t=0 edge is visible */
+/*         tN = 0.0; */
+/*         // recompute sc for this edge */
+/*         if (-d < 0.0) */
+/*             sN = 0.0; */
+/*         else if (-d > a) */
+/*             sN = sD; */
+/*         else { */
+/*             sN = -d; */
+/*             sD = a; */
+/*         } */
+/*     } */
+/*     else if (tN > tD) {      // tc > 1  => the t=1 edge is visible */
+/*         tN = tD; */
+/*         // recompute sc for this edge */
+/*         if ((-d + b) < 0.0) */
+/*             sN = 0; */
+/*         else if ((-d + b) > a) */
+/*             sN = sD; */
+/*         else { */
+/*             sN = (-d +  b); */
+/*             sD = a; */
+/*         } */
+/*     } */
+/*     // finally do the division to get sc and tc */
+/*     sc = (abs(sN) < SMALL_NUM ? 0.0 : sN / sD); */
+/*     tc = (abs(tN) < SMALL_NUM ? 0.0 : tN / tD); */
+
+/*     // get the difference of the two closest points */
+/*     Vector3d   dP = w + (sc * u) - (tc * v);  // =  S1(sc) - S2(tc) */
+
+/*     return norm(dP);   // return the closest distance */
+/* } */

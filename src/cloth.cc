@@ -139,6 +139,7 @@ void Cloth::generate_geometry(vector<vec4>& obj_vertices,
 }
 
 void Cloth::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) const {
+    /* cout << "Pos: " << Pos << endl; */
     Verts = Pos;
     Faces = F;
 }
@@ -163,7 +164,7 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
 }
 void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     for (int i = 0; i < Pos.rows(); i++) {
-        if (i == 1 || i == 2) continue; // fixed verts
+        if (i == 1 || i == 0) continue; // fixed verts
         Pos(i, 0) = q[3*i];
         Pos(i, 1) = q[3*i + 1];
         Pos(i, 2) = q[3*i + 2];

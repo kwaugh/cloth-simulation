@@ -29,14 +29,19 @@ public:
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
     static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
     void reset();
+    /* x0 is point, x1-x3 is plane */
+    double pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3);
 
     double timeStep = .0003;
     double grav = 9.81;
     bool F_GRAV = true;
     bool F_STRETCH = true;
     bool F_SHEAR = true;
-    bool F_BEND = true;
+    bool F_BEND = false;
     bool paused = false;
+    int vCloth = 5;
+
+    int runCount = 0;
 
 private:
     shared_ptr<Cloth> g_cloth;
