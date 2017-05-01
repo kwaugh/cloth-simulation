@@ -23,7 +23,7 @@ public:
     void numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev);
     void generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
-    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&) const;
+    void generate_libigl_geometry(MatrixX3d&, MatrixX3i&, VectorXd&) const;
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
@@ -31,17 +31,26 @@ public:
     void reset();
     /* x0 is point, x1-x3 is plane */
     double pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3);
+    bool pointTriIntersection(Vector3d p, Vector3d a, Vector3d b, Vector3d c);
+    /* double edgeEdgeDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3); */
+    bool edgeEdgeIntersection(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3,
+            Vector3d norm1, Vector3d norm2);
 
-    double timeStep = .0003;
-    double grav = 9.81;
-    bool F_GRAV = true;
-    bool F_STRETCH = true;
-    bool F_SHEAR = true;
-    bool F_BEND = false;
-    bool paused = false;
-    int vCloth = 5;
+    double timeStep = .003;
+    double grav     = 9.81;
+
+    bool F_GRAV     = true;
+    bool F_STRETCH  = true;
+    bool F_SHEAR    = true;
+    bool F_BEND     = false;
+
+    bool paused     = false;
+    int vCloth      = 5;
+    double scale       = 10;
+    double clothThickness = 0.01 * scale;
 
     int runCount = 0;
+
 
 private:
     shared_ptr<Cloth> g_cloth;

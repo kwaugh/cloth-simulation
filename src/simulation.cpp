@@ -1,6 +1,9 @@
 #include "simulation.h"
 #include <iostream>
 #include <math.h>
+#include <utility>
+#include "vec.h"
+#include "rootparitycollisiontest.h"
 
 #define BICBOI BiCGSTAB
 
@@ -14,7 +17,7 @@ Simulation::Simulation() {
 
 void Simulation::reset() {
     g_cloth = make_shared<Cloth>("../src/resources/cloth." + to_string(vCloth) + ".node",
-            "../src/resources/cloth." + to_string(vCloth) + ".ele", 1, Vector3d(-1, 0, .5));
+            "../src/resources/cloth." + to_string(vCloth) + ".ele", scale, Vector3d(-1, 0, .5));
     g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
             "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
 }
@@ -30,8 +33,8 @@ void Simulation::generate_geometry(vector<vec4>& obj_vertices,
     /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
 }
 
-void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) const {
-    g_cloth->generate_libigl_geometry(Verts, Faces);
+void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces, VectorXd& C) const {
+    g_cloth->generate_libigl_geometry(Verts, Faces, C);
 }
 
 void Simulation::takeSimulationStep() {
@@ -44,16 +47,61 @@ void Simulation::takeSimulationStep() {
     v_cand = v;
     VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
     /* check for collisions */
-    /* auto F = g_cloth->F.size(); */
-    /* for (int i = 0; i < F.rows(); i++) { */
-    /*     for (uint j = 0; j < q_cand.size(); j++) { */
-    /*         /1* if (q_cand[j] == F(i, 0) || q_cand[j] == F(i, 1) || q_cand[j] == F(i, 2)) *1/ */
-    /*         /1*     continue; *1/ */
-    /*         /1* if (pointPlaneDist()) *1/ */
-    /*     } */
-    /* } */ 
+    MatrixX3i F = g_cloth->F;
+    MatrixX3d Pos = g_cloth->Pos;
+    g_cloth->Colors.setZero();
+    map<int, int> pointFaceCollisions; /* point index, face index */
+    map<pair<int, int>, pair<int, int>> edgeEdgeCollisions;
+    for (uint i = 0; i < F.rows(); i++) {
+        for (uint j = 0; j < q_cand.size() / 3; j++) {
+            if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2))
+                continue;
+            Vector3d p = q_cand.segment<3>(j*3);
+            double dist = pointPlaneDist(p, Pos.row(F(i, 0)), Pos.row(F(i, 1)), Pos.row(F(i, 2)));
+            bool intersected = pointTriIntersection(p, Pos.row(F(i, 0)), Pos.row(F(i, 1)), Pos.row(F(i, 2)));
+            if (dist < clothThickness && intersected) {
+                pointFaceCollisions[j] = i;
+                g_cloth->Colors[i] += .01;
+            }
+        }
+    }
+    g_cloth->Colors[0] = 1.0;
+    for (uint i = 0; i < F.rows(); i++) {
+        Vector3d norm1 = (Pos.row(F(i, 1)) - Pos.row(F(i, 0))).cross(Pos.row(F(i, 2)) - Pos.row(F(i, 0))).normalized();
+        for (uint j = i+1; j < F.rows(); j++) {
+            Vector3d norm2 = (Pos.row(F(j, 1)) - Pos.row(F(j, 0))).cross(Pos.row(F(j, 2)) - Pos.row(F(j, 0))).normalized();
+            for (int k = 0; k < 3; k++) {
+                for (int l = 0; l < 3; l++) {
+                    if (F(i, k) == F(j, l) || F(i, k) == F(j, (l+1)%3) ||
+                            F(i, (k+1)%3) == F(j, l) || F(i, (k+1)%3) == F(j, (l+1)%3)
+                        )
+                        continue;
+                    bool edgeEdgeCollision = edgeEdgeIntersection(
+                        Pos.row(F(i, k)),
+                        Pos.row(F(i, (k+1)%3)),
+                        Pos.row(F(j, l)),
+                        Pos.row(F(j, (l+1)%3)),
+                        norm1,
+                        norm2
+                    );
+                    if (edgeEdgeCollision) {
+                        edgeEdgeCollisions[make_pair(F(i, k), F(i, (k+1)%3))] =
+                                make_pair(F(j, l), F(j, (l+1)%3));
+                        g_cloth->Colors[i] += .01;
+                        g_cloth->Colors[j] += .01;
+                    }
+                }
+            }
+        }
+    }
 
     g_cloth->unpackConfiguration(q, v, qprev);
+    for (uint i = 0; i < q.size(); i++) {
+        if (isnan(q[i])) {
+            cout << "NaN" << endl;
+            exit(1);
+        }
+    }
 }
 
 void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
@@ -88,9 +136,13 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
             + timeStep * timeStep
             * Minv
             * computeDF(guessQ)).sparseView();
+        /* cout << "df: " << df << endl; */
         BICBOI<SparseMatrix<double>> solver;
         /* SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > solver; */
+        /* cout << "q.size(): " << q.size() << endl; */
         solver.compute(df);
+        VectorXd temp = solver.solve(f);
+        /* cout << temp << endl; */
         guessQ -= solver.solve(f);
     }
     /* cout << "Newton's method ran in " << i << " iterations." << endl; */
@@ -195,6 +247,11 @@ VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
                         unique_i2_point = x;
                     }
                 }
+                /* cout << "F.row(i): " << F.row(i) << endl; */
+                /* cout << "F.row(i2): " << F.row(i2) << endl; */
+                /* if (i == i2) { */
+                /*     cout << "i == i2" << endl; */
+                /* } */
 
                 Vector3d x0 = Pos.row(F(i, unique_i_point));
                 Vector3d x1 = Pos.row(F(i, (unique_i_point+1)%3));
@@ -453,6 +510,9 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                             Vector3d dnhatadxms = dnadxms / nA.norm();
                             Vector3d dnhatbdxms = dnbdxms / nB.norm();
                             Vector3d dehatdxms = dedxms / e.norm();
+                            if (nA.norm() < 0.0000000001) cout << "nA is zero" << endl;
+                            if (nB.norm() < 0.0000000001) cout << "nB is zero" << endl;
+                            if (e.norm() < 0.0000000001) cout << "e is zero" << endl;
                             double dcosTdxms = dnhatadxms.dot(nB.normalized())
                                 + nA.normalized().dot(dnhatbdxms);
                             double dsinTdxms = (
@@ -540,90 +600,48 @@ MatrixXd Simulation::computeDF(VectorXd q) {
 
 const Matrix3d Simulation::S(const Eigen::Vector3d &v) {
     Matrix3d result;
-    result << 0, -v[2], v[1],
-            v[2], 0, -v[0],
-            -v[1], v[0], 0;
+    result << 0,   -v[2], v[1],
+              v[2], 0,   -v[0],
+             -v[1], v[0], 0;
     return result;
 }
 const Vector3d Simulation::S_s(const Eigen::Vector3d &v, int index) {
     return S(v).row(index);
 }
 
-inline double Simulation::pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3) {
+double Simulation::pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3) {
     Vector3d unitNorm = (x2 - x1).cross(x3 - x1).normalized();
     return abs(unitNorm.dot(x0 - x1));
 }
-// dist3D_Segment_to_Segment(): get the 3D minimum distance between 2 segments
-//    Input:  two 3D line segments S1 and S2
-//    Return: the shortest distance between S1 and S2
-/* double dist3D_Segment_to_Segment(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3) { */
-/*     double SMALL_NUM = 0.00001; */
-/*     Vector3d u = x1 - x0; */
-/*     Vector3d v = x3 - x2; */
-/*     Vector3d w = x0 - x2; */
-/*     double a = u.dot(u);         // always >= 0 */
-/*     double b = u.dot(v); */
-/*     double c = v.dot(v);         // always >= 0 */
-/*     double d = u.dot(w); */
-/*     double e = v.dot(w); */
-/*     double D = a*c - b*b;        // always >= 0 */
-/*     double sc, sN, sD; */
-/*     sc = sN = sD = D;       // sc = sN / sD, default sD = D >= 0 */
-/*     double tc, tN, tD; */
-/*     tc = tN = tD = D;       // tc = tN / tD, default tD = D >= 0 */
 
-/*     // compute the line parameters of the two closest points */
-/*     if (D < SMALL_NUM) { // the lines are almost parallel */
-/*         sN = 0.0;         // force using point P0 on segment S1 */
-/*         sD = 1.0;         // to prevent possible division by 0.0 later */
-/*         tN = e; */
-/*         tD = c; */
-/*     } */
-/*     else {                 // get the closest points on the infinite lines */
-/*         sN = (b*e - c*d); */
-/*         tN = (a*e - b*d); */
-/*         if (sN < 0.0) {        // sc < 0 => the s=0 edge is visible */
-/*             sN = 0.0; */
-/*             tN = e; */
-/*             tD = c; */
-/*         } */
-/*         else if (sN > sD) {  // sc > 1  => the s=1 edge is visible */
-/*             sN = sD; */
-/*             tN = e + b; */
-/*             tD = c; */
-/*         } */
-/*     } */
+bool Simulation::pointTriIntersection(Vector3d p, Vector3d a, Vector3d b, Vector3d c) {
+    Vector3d unitNorm = (b - a).cross(c - a).normalized();
+    double dist = unitNorm.dot(p - a);
+    Vector3d projectedPoint = p - (dist * unitNorm);
+    Vector3d bary = g_cloth->getBary(projectedPoint, a, b, c);
+    return bary[0] > 0 && bary[1] > 0 && bary[2] > 0;
+}
 
-/*     if (tN < 0.0) {            // tc < 0 => the t=0 edge is visible */
-/*         tN = 0.0; */
-/*         // recompute sc for this edge */
-/*         if (-d < 0.0) */
-/*             sN = 0.0; */
-/*         else if (-d > a) */
-/*             sN = sD; */
-/*         else { */
-/*             sN = -d; */
-/*             sD = a; */
-/*         } */
-/*     } */
-/*     else if (tN > tD) {      // tc > 1  => the t=1 edge is visible */
-/*         tN = tD; */
-/*         // recompute sc for this edge */
-/*         if ((-d + b) < 0.0) */
-/*             sN = 0; */
-/*         else if ((-d + b) > a) */
-/*             sN = sD; */
-/*         else { */
-/*             sN = (-d +  b); */
-/*             sD = a; */
-/*         } */
-/*     } */
-/*     // finally do the division to get sc and tc */
-/*     sc = (abs(sN) < SMALL_NUM ? 0.0 : sN / sD); */
-/*     tc = (abs(tN) < SMALL_NUM ? 0.0 : tN / tD); */
+Vec3d convert(Vector3d v) {
+   return Vec3d(v[0], v[1], v[2]);
+}
 
-/*     // get the difference of the two closest points */
-/*     Vector3d   dP = w + (sc * u) - (tc * v);  // =  S1(sc) - S2(tc) */
+bool Simulation::edgeEdgeIntersection(Vector3d x0, Vector3d x1, Vector3d x2,
+        Vector3d x3, Vector3d norm1, Vector3d norm2) {
 
-/*     return norm(dP);   // return the closest distance */
-/* } */
+    Vector3d x0Start = x0 - norm1 * clothThickness / 2;
+    Vector3d x0End   = x0 + norm1 * clothThickness / 2;
+
+    Vector3d x1Start = x1 - norm1 * clothThickness / 2;
+    Vector3d x1End   = x1 + norm1 * clothThickness / 2;
+
+    Vector3d x2Start = x2 - norm2 * clothThickness / 2;
+    Vector3d x2End   = x2 + norm2 * clothThickness / 2;
+
+    Vector3d x3Start = x3 - norm2 * clothThickness / 2;
+    Vector3d x3End   = x3 + norm2 * clothThickness / 2;
+
+    rootparity::RootParityCollisionTest test(convert(x0Start), convert(x1Start), convert(x2Start), convert(x3Start),
+            convert(x0End), convert(x1End), convert(x2End), convert(x3End), true);
+    return test.run_test();
+}

@@ -35,6 +35,8 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
     int numFaces;
     eleIfs >> numFaces >> naeem >> naeem;
     F.resize(numFaces, 3);
+    Colors.resize(F.rows());
+    Colors.setZero();
     int x, y, z;
     for (int i = 0; i < numFaces; i++) {
         eleIfs >> naeem >> x >> y >> z;
@@ -138,10 +140,11 @@ void Cloth::generate_geometry(vector<vec4>& obj_vertices,
     }
 }
 
-void Cloth::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) const {
+void Cloth::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces, VectorXd& C) const {
     /* cout << "Pos: " << Pos << endl; */
     Verts = Pos;
     Faces = F;
+    C = Colors;
 }
 
 void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
@@ -177,4 +180,21 @@ void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
         oldPos(i, 1) = qprev[3*i + 1];
         oldPos(i, 2) = qprev[3*i + 2];
     }
+}
+
+/*                               The triangle coords */
+Vector3d Cloth::getBary(Vector3d point, Vector3d a, Vector3d b, Vector3d c) {
+    Vector3d v0 = b - a;
+    Vector3d v1 = c - a;
+    Vector3d v2 = point - a;
+    double d00 = v0.dot(v0);
+    double d01 = v0.dot(v1);
+    double d11 = v1.dot(v1);
+    double d20 = v2.dot(v0);
+    double d21 = v2.dot(v1);
+    double denom = d00 * d11 - d01 * d01;
+    double v = (d11 * d20 - d01 * d21) / denom;
+    double w = (d00 * d21 - d01 * d20) / denom;
+    double u = 1.0 - v - w;
+    return Vector3d(u, v, w);
 }
