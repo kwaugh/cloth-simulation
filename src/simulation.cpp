@@ -57,7 +57,6 @@ void Simulation::takeSimulationStep() {
     /* qprev doesn't get set until this following line */
     numericalIntegration(q_cand, v_cand, qprev);
     VectorXd q_candbak = q_cand;
-    VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
     /* check for collisions */
     MatrixX3i F = g_cloth->F;
     MatrixX3d Pos = g_cloth->Pos;
@@ -65,6 +64,74 @@ void Simulation::takeSimulationStep() {
     g_cloth->Colors.setZero();
     /* map<int, int> pointFaceCollisions; /1* point index, face index *1/ */
     /* map<pair<int, int>, pair<int, int>> edgeEdgeCollisions; */
+    if (COLLISIONS) {
+        handleCollisions(q_cand, v_cand, qprev);
+    }
+
+    g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
+    for (uint i = 0; i < q_cand.size(); i++) {
+        if (isnan(q_cand[i])) {
+            cout << "NaN" << endl;
+            exit(1);
+        }
+    }
+}
+
+void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
+    VectorXd F;
+    F.setZero();
+    SparseMatrix<double> H; // the hessian
+    H.resize(q.size(), q.size());
+    H.setZero();
+    SparseMatrix<double> M = g_cloth->getMassMatrix();
+    SparseMatrix<double> Minv = g_cloth->getInverseMassMatrix();
+
+    qprev = q;
+    VectorXd guessQ = q;
+    int i;
+    for (i = 0; i < 20; i++) {
+        VectorXd f = -guessQ
+            + q
+            + timeStep * v
+            + (
+                 timeStep * timeStep
+                 * Minv
+                 * computeForce(guessQ, qprev)
+              );
+        double residual = f.norm();
+        if (residual < 1e-8) {
+            /* qprev = q; */
+            break;
+        }
+        SparseMatrix<double> identity(q.size(), q.size());
+        identity.setIdentity();
+        SparseMatrix<double> df = (-MatrixXd::Identity(q.size(), q.size())
+            + timeStep * timeStep
+            * Minv
+            * computeDF(guessQ)).sparseView();
+        /* cout << "df: " << df << endl; */
+        BICBOI<SparseMatrix<double>> solver;
+        /* SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > solver; */
+        /* cout << "q.size(): " << q.size() << endl; */
+        solver.compute(df);
+        VectorXd temp = solver.solve(f);
+        /* cout << temp << endl; */
+        guessQ -= solver.solve(f);
+    }
+    /* cout << "Newton's method ran in " << i << " iterations." << endl; */
+    q = guessQ;
+    /* q += timeStep * v; */
+    F = computeForce(q, qprev);
+    v += timeStep * Minv * F;
+}
+
+void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev) {
+    VectorXd q_candbak = q_cand;
+    MatrixX3i F = g_cloth->F;
+    MatrixX3d Pos = g_cloth->Pos;
+    VectorXd mass = g_cloth->getMassVector();
+    VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
+
     vector<Collision> collisions;
     set<string> uniqueCollisions;
     for (uint i = 0; i < F.rows(); i++) {
@@ -164,66 +231,12 @@ void Simulation::takeSimulationStep() {
 
         // Do the repulsion spring force
     /* } */
-    q_cand = qprev + timeStep * v_avg_cand;
-    cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl;
-    VectorXd newForces = computeForce(q_cand, qprev);
-    v_cand = v_avg_cand + timeStep / 2 * g_cloth->getInverseMassMatrix() * newForces;
 
-    g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
-    for (uint i = 0; i < q_cand.size(); i++) {
-        if (isnan(q_cand[i])) {
-            cout << "NaN" << endl;
-            exit(1);
-        }
-    }
-}
+    /* q_cand = qprev + timeStep * v_avg_cand; */
+    /* cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl; */
+    /* VectorXd newForces = computeForce(q_cand, qprev); */
+    /* v_cand = v_avg_cand + timeStep / 2 * g_cloth->getInverseMassMatrix() * newForces; */
 
-void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
-    VectorXd F;
-    F.setZero();
-    SparseMatrix<double> H; // the hessian
-    H.resize(q.size(), q.size());
-    H.setZero();
-    SparseMatrix<double> M = g_cloth->getMassMatrix();
-    SparseMatrix<double> Minv = g_cloth->getInverseMassMatrix();
-
-    qprev = q;
-    VectorXd guessQ = q;
-    int i;
-    for (i = 0; i < 20; i++) {
-        VectorXd f = -guessQ
-            + q
-            + timeStep * v
-            + (
-                 timeStep * timeStep
-                 * Minv
-                 * computeForce(guessQ, qprev)
-              );
-        double residual = f.norm();
-        if (residual < 1e-8) {
-            /* qprev = q; */
-            break;
-        }
-        SparseMatrix<double> identity(q.size(), q.size());
-        identity.setIdentity();
-        SparseMatrix<double> df = (-MatrixXd::Identity(q.size(), q.size())
-            + timeStep * timeStep
-            * Minv
-            * computeDF(guessQ)).sparseView();
-        /* cout << "df: " << df << endl; */
-        BICBOI<SparseMatrix<double>> solver;
-        /* SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > solver; */
-        /* cout << "q.size(): " << q.size() << endl; */
-        solver.compute(df);
-        VectorXd temp = solver.solve(f);
-        /* cout << temp << endl; */
-        guessQ -= solver.solve(f);
-    }
-    /* cout << "Newton's method ran in " << i << " iterations." << endl; */
-    q = guessQ;
-    /* q += timeStep * v; */
-    F = computeForce(q, qprev);
-    v += timeStep * Minv * F;
 }
 
 VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {

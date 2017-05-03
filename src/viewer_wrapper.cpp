@@ -34,6 +34,7 @@ namespace {
         viewer.ngui->addVariable<bool>("Stretch Force",        sim->F_STRETCH);
         viewer.ngui->addVariable<bool>("Shear Force",          sim->F_SHEAR);
         viewer.ngui->addVariable<bool>("Bend Force",           sim->F_BEND);
+        viewer.ngui->addVariable<bool>("Collisions",           sim->COLLISIONS);
         viewer.ngui->addVariable<int>("Cloth Version",         sim->vCloth);
         viewer.ngui->addVariable<double>("Cloth Scale",        sim->scale);
         viewer.ngui->addVariable<double>("Cloth Thickness",    sim->clothThickness);
@@ -64,7 +65,7 @@ namespace {
         viewer.data.set_mesh(V, F);
         /* viewer.core.align_camera_center(V, F); */
 
-        if (C.rows() > 0) {
+        if (sim->COLLISIONS && C.rows() > 0) {
             MatrixX3d C_jet;
             igl::jet(C, true, C_jet);
             viewer.data.set_colors(C_jet);

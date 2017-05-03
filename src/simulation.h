@@ -27,6 +27,7 @@ public:
     void generate_libigl_geometry(MatrixX3d&, MatrixX3i&, VectorXd&) const;
     VectorXd computeForce(VectorXd q, VectorXd qprev);
     MatrixXd computeDF(VectorXd q);
+    void handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev);
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
     static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
     void reset();
@@ -43,6 +44,7 @@ public:
     bool F_STRETCH  = true;
     bool F_SHEAR    = true;
     bool F_BEND     = false;
+    bool COLLISIONS = true;
 
     bool paused     = false;
     int vCloth      = 5;
