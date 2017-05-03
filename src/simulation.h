@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include "cloth.h"
 #include "sphere.h"
+#include "collision.h"
 #include <memory>
 #include <mutex>
 
@@ -31,10 +32,9 @@ public:
     void reset();
     /* x0 is point, x1-x3 is plane */
     double pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3);
-    bool pointTriIntersection(Vector3d p, Vector3d a, Vector3d b, Vector3d c);
+    bool pointTriIntersection(Collision& coll);
     /* double edgeEdgeDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3); */
-    bool edgeEdgeIntersection(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3,
-            Vector3d norm1, Vector3d norm2);
+    void edgeEdgeIntersection(Collision& coll);
 
     double timeStep = .003;
     double grav     = 9.81;

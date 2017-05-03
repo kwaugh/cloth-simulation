@@ -64,11 +64,11 @@ namespace {
         viewer.data.set_mesh(V, F);
         /* viewer.core.align_camera_center(V, F); */
 
-        /* if (C.rows() > 0) { */
-        /*     MatrixX3d C_jet; */
-        /*     igl::jet(C, true, C_jet); */
-        /*     viewer.data.set_colors(C_jet); */
-        /* } */
+        if (C.rows() > 0) {
+            MatrixX3d C_jet;
+            igl::jet(C, true, C_jet);
+            viewer.data.set_colors(C_jet);
+        }
 
         // Signal to render.
         renderLock->unlock();
