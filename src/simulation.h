@@ -25,9 +25,10 @@ public:
     void generate_geometry(vector<glm::vec4>& obj_vertices,
         vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
     void generate_libigl_geometry(MatrixX3d&, MatrixX3i&, VectorXd&) const;
-    VectorXd computeForce(VectorXd q, VectorXd qprev);
+    VectorXd computeForce(VectorXd q);
     MatrixXd computeDF(VectorXd q);
-    void handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev);
+    void handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev,
+            VectorXd& vprev);
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
     static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
     void reset();

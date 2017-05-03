@@ -46,7 +46,8 @@ void Simulation::generate_geometry(vector<vec4>& obj_vertices,
     /* g_sphere->generate_geometry(obj_vertices, obj_faces); */
 }
 
-void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces, VectorXd& C) const {
+void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces,
+        VectorXd& C) const {
     g_cloth->generate_libigl_geometry(Verts, Faces, C);
 }
 
@@ -65,7 +66,7 @@ void Simulation::takeSimulationStep() {
     /* map<int, int> pointFaceCollisions; /1* point index, face index *1/ */
     /* map<pair<int, int>, pair<int, int>> edgeEdgeCollisions; */
     if (COLLISIONS) {
-        handleCollisions(q_cand, v_cand, qprev);
+        handleCollisions(q_cand, v_cand, qprev, vprev);
     }
 
     g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
@@ -96,7 +97,7 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
             + (
                  timeStep * timeStep
                  * Minv
-                 * computeForce(guessQ, qprev)
+                 * computeForce(guessQ)
               );
         double residual = f.norm();
         if (residual < 1e-8) {
@@ -121,11 +122,12 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
     /* cout << "Newton's method ran in " << i << " iterations." << endl; */
     q = guessQ;
     /* q += timeStep * v; */
-    F = computeForce(q, qprev);
+    F = computeForce(q);
     v += timeStep * Minv * F;
 }
 
-void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev) {
+void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
+        VectorXd& qprev, VectorXd& vprev) {
     VectorXd q_candbak = q_cand;
     MatrixX3i F = g_cloth->F;
     MatrixX3d Pos = g_cloth->Pos;
@@ -134,8 +136,8 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& 
 
     vector<Collision> collisions;
     set<string> uniqueCollisions;
-    for (uint i = 0; i < F.rows(); i++) {
-        for (uint j = 0; j < q_cand.size() / 3; j++) {
+    for (int i = 0; i < F.rows(); i++) {
+        for (int j = 0; j < q_cand.size() / 3; j++) {
             if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2))
                 continue;
             Collision coll(
@@ -156,9 +158,7 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& 
         }
     }
     for (uint i = 0; i < F.rows(); i++) {
-        Vector3d norm1 = (Pos.row(F(i, 1)) - Pos.row(F(i, 0))).cross(Pos.row(F(i, 2)) - Pos.row(F(i, 0))).normalized();
         for (uint j = i+1; j < F.rows(); j++) {
-            Vector3d norm2 = (Pos.row(F(j, 1)) - Pos.row(F(j, 0))).cross(Pos.row(F(j, 2)) - Pos.row(F(j, 0))).normalized();
             for (int k = 0; k < 3; k++) {
                 for (int l = 0; l < 3; l++) {
                     string id = to_string(F(i, k)) + "." + to_string(F(i, (k+1)%3)) + "." +
@@ -192,54 +192,60 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& 
         }
     }
 
-/*     for (Collision c : collisions) { */
-/*         if (c.isEdgeEdge) { */
-/*             Vector3d vel1 = c.a * vprev.segment<3>(3*c.p1) + (1 - c.a) * vprev.segment<3>(3*c.p0); */
-/*             Vector3d vel2 = c.b * vprev.segment<3>(3*c.p3) + (1 - c.b) * vprev.segment<3>(3*c.p2); */
-/*             /1* double mass1 = c.a * mass[c.p1] + (1 - c.a) * mass[c.p0]; *1/ */
-/*             /1* double mass2 = c.b * mass[c.p3] + (1 - c.b) * mass[c.p2]; *1/ */
+    for (Collision c : collisions) {
+        if (c.isEdgeEdge) {
+            Vector3d vel1 = c.a * vprev.segment<3>(3*c.p1) + (1 - c.a) * vprev.segment<3>(3*c.p0);
+            Vector3d vel2 = c.b * vprev.segment<3>(3*c.p3) + (1 - c.b) * vprev.segment<3>(3*c.p2);
+            /* double mass1 = c.a * mass[c.p1] + (1 - c.a) * mass[c.p0]; */
+            /* double mass2 = c.b * mass[c.p3] + (1 - c.b) * mass[c.p2]; */
 
-/*             // Relative velocity magnitude in the normal directio */
-/*             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal); */
+            // Relative velocity magnitude in the normal directio
+            double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
 
-/*             // They're headed towards each other */
-/*             if (relvel > 0.0) { */
-/*                 double Idivm = relvel / (c.a*c.a + (1-c.a)*(1-c.a) + c.b*c.b + (1-c.b)*(1-c.b)); */
-/*                 /1* cout << "c.p0: " << c.p0 << "  c.p1: " << c.p1 << "  c.p2: " << c.p2 << "  c.p3: " << c.p3 << endl; *1/ */
-/*                 /1* cout << "Idivm: " << Idivm << endl; *1/ */
-/*                 /1* cout << "c.normal: " << c.normal << endl; *1/ */
-/*                 v_avg_cand.segment<3>(3*c.p0) += (1 - c.a) * Idivm * c.normal; */
-/*                 v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal; */
-/*                 v_avg_cand.segment<3>(3*c.p2) += -(1 - c.b) * Idivm * c.normal; */
-/*                 v_avg_cand.segment<3>(3*c.p3) += -c.b * Idivm * c.normal; */
-/*             } */
-/*         } else { */
-/*             Vector3d vel1 = vprev.segment<3>(3*c.p0); */
-/*             Vector3d vel2 = c.a * vprev.segment<3>(3*c.p1) + */
-/*                             c.b * vprev.segment<3>(3*c.p2) + */
-/*                             c.c * vprev.segment<3>(3*c.p3); */
-/*             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal); */
+            // They're headed towards each other
+            if (relvel > 0.0) {
+                double Idivm = relvel / (c.a*c.a + (1-c.a)*(1-c.a) + c.b*c.b + (1-c.b)*(1-c.b));
+                /* cout << "c.p0: " << c.p0 << "  c.p1: " << c.p1 << "  c.p2: " << c.p2 << "  c.p3: " << c.p3 << endl; */
+                /* cout << "Idivm: " << Idivm << endl; */
+                /* cout << "c.normal: " << c.normal << endl; */
+                v_avg_cand.segment<3>(3*c.p0) += (1 - c.a) * Idivm * c.normal;
+                v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
+                v_avg_cand.segment<3>(3*c.p2) += -(1 - c.b) * Idivm * c.normal;
+                v_avg_cand.segment<3>(3*c.p3) += -c.b * Idivm * c.normal;
+            }
+        } else {
+            Vector3d vel1 = vprev.segment<3>(3*c.p0);
+            Vector3d vel2 = c.a * vprev.segment<3>(3*c.p1) +
+                            c.b * vprev.segment<3>(3*c.p2) +
+                            c.c * vprev.segment<3>(3*c.p3);
+            double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
 
-/*             if (relvel > 0.0) { */
-/*                 double Idivm = relvel / (1 + c.a*c.a + c.b*c.b + c.c*c.c); */
-/*                 v_avg_cand.segment<3>(3*c.p0) += -Idivm * c.normal; */
-/*                 v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal; */
-/*                 v_avg_cand.segment<3>(3*c.p2) += c.b * Idivm * c.normal; */
-/*                 v_avg_cand.segment<3>(3*c.p3) += c.c * Idivm * c.normal; */
-/*             } */
-/*         } */
+            if (relvel > 0.0) {
+                double Idivm = relvel / (1 + c.a*c.a + c.b*c.b + c.c*c.c);
+                v_avg_cand.segment<3>(3*c.p0) += -Idivm * c.normal;
+                v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
+                v_avg_cand.segment<3>(3*c.p2) += c.b * Idivm * c.normal;
+                v_avg_cand.segment<3>(3*c.p3) += c.c * Idivm * c.normal;
+            }
+        }
 
         // Do the repulsion spring force
-    /* } */
+    }
 
-    /* q_cand = qprev + timeStep * v_avg_cand; */
-    /* cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl; */
-    /* VectorXd newForces = computeForce(q_cand, qprev); */
+    q_cand = qprev + timeStep * v_avg_cand;
+    cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl;
+    VectorXd oldForces = computeForce(q_candbak);
+    VectorXd newForces = computeForce(q_cand);
+    cout << "newForces - oldForces: " << (newForces - oldForces).norm() << endl;
+    VectorXd v_candbak = v_cand;
     /* v_cand = v_avg_cand + timeStep / 2 * g_cloth->getInverseMassMatrix() * newForces; */
-
+    /* v_cand = v_avg_cand + timeStep / 2 * (v_candbak - vprev) / timeStep; */
+    v_cand = v_avg_cand + timeStep * (v_candbak - vprev) / 4;
+    cout << "v_cand - v_candbak: " << (v_cand - v_candbak).norm() << endl;
+    cout << endl;
 }
 
-VectorXd Simulation::computeForce(VectorXd q, VectorXd qprev) {
+VectorXd Simulation::computeForce(VectorXd q) {
     VectorXd Force_Stretch(q.size());
     VectorXd Force_Shear(q.size());
     VectorXd Force_Bend(q.size());
