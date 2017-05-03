@@ -56,6 +56,7 @@ void Simulation::takeSimulationStep() {
     vprev = v_cand;
     /* qprev doesn't get set until this following line */
     numericalIntegration(q_cand, v_cand, qprev);
+    VectorXd q_candbak = q_cand;
     VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
     /* check for collisions */
     MatrixX3i F = g_cloth->F;
@@ -124,45 +125,49 @@ void Simulation::takeSimulationStep() {
         }
     }
 
-    for (Collision c : collisions) {
-        if (c.isEdgeEdge) {
-            Vector3d vel1 = c.a * vprev.segment<3>(3*c.p1) + (1 - c.a) * vprev.segment<3>(3*c.p0);
-            Vector3d vel2 = c.b * vprev.segment<3>(3*c.p3) + (1 - c.b) * vprev.segment<3>(3*c.p2);
-            /* double mass1 = c.a * mass[c.p1] + (1 - c.a) * mass[c.p0]; */
-            /* double mass2 = c.b * mass[c.p3] + (1 - c.b) * mass[c.p2]; */
+/*     for (Collision c : collisions) { */
+/*         if (c.isEdgeEdge) { */
+/*             Vector3d vel1 = c.a * vprev.segment<3>(3*c.p1) + (1 - c.a) * vprev.segment<3>(3*c.p0); */
+/*             Vector3d vel2 = c.b * vprev.segment<3>(3*c.p3) + (1 - c.b) * vprev.segment<3>(3*c.p2); */
+/*             /1* double mass1 = c.a * mass[c.p1] + (1 - c.a) * mass[c.p0]; *1/ */
+/*             /1* double mass2 = c.b * mass[c.p3] + (1 - c.b) * mass[c.p2]; *1/ */
 
-            // Relative velocity magnitude in the normal directio
-            double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
+/*             // Relative velocity magnitude in the normal directio */
+/*             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal); */
 
-            // They're headed towards each other
-            if (relvel > 0.0) {
-                double Idivm = relvel / (c.a*c.a + (1-c.a)*(1-c.a) + c.b*c.b + (1-c.b)*(1-c.b));
-                /* cout << "c.p0: " << c.p0 << "  c.p1: " << c.p1 << "  c.p2: " << c.p2 << "  c.p3: " << c.p3 << endl; */
-                /* cout << "Idivm: " << Idivm << endl; */
-                /* cout << "c.normal: " << c.normal << endl; */
-                v_avg_cand.segment<3>(3*c.p0) += (1 - c.a) * Idivm * c.normal;
-                v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
-                v_avg_cand.segment<3>(3*c.p2) += -(1 - c.b) * Idivm * c.normal;
-                v_avg_cand.segment<3>(3*c.p3) += -c.b * Idivm * c.normal;
-            }
-        } else {
-            Vector3d vel1 = vprev.segment<3>(3*c.p0);
-            Vector3d vel2 = c.a * vprev.segment<3>(3*c.p1) +
-                            c.b * vprev.segment<3>(3*c.p2) +
-                            c.c * vprev.segment<3>(3*c.p3);
-            double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
+/*             // They're headed towards each other */
+/*             if (relvel > 0.0) { */
+/*                 double Idivm = relvel / (c.a*c.a + (1-c.a)*(1-c.a) + c.b*c.b + (1-c.b)*(1-c.b)); */
+/*                 /1* cout << "c.p0: " << c.p0 << "  c.p1: " << c.p1 << "  c.p2: " << c.p2 << "  c.p3: " << c.p3 << endl; *1/ */
+/*                 /1* cout << "Idivm: " << Idivm << endl; *1/ */
+/*                 /1* cout << "c.normal: " << c.normal << endl; *1/ */
+/*                 v_avg_cand.segment<3>(3*c.p0) += (1 - c.a) * Idivm * c.normal; */
+/*                 v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal; */
+/*                 v_avg_cand.segment<3>(3*c.p2) += -(1 - c.b) * Idivm * c.normal; */
+/*                 v_avg_cand.segment<3>(3*c.p3) += -c.b * Idivm * c.normal; */
+/*             } */
+/*         } else { */
+/*             Vector3d vel1 = vprev.segment<3>(3*c.p0); */
+/*             Vector3d vel2 = c.a * vprev.segment<3>(3*c.p1) + */
+/*                             c.b * vprev.segment<3>(3*c.p2) + */
+/*                             c.c * vprev.segment<3>(3*c.p3); */
+/*             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal); */
 
-            if (relvel > 0.0) {
-                double Idivm = relvel / (1 + c.a*c.a + c.b*c.b + c.c*c.c);
-                v_avg_cand.segment<3>(3*c.p0) += -Idivm * c.normal;
-                v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
-                v_avg_cand.segment<3>(3*c.p2) += c.b * Idivm * c.normal;
-                v_avg_cand.segment<3>(3*c.p3) += c.c * Idivm * c.normal;
-            }
-        }
+/*             if (relvel > 0.0) { */
+/*                 double Idivm = relvel / (1 + c.a*c.a + c.b*c.b + c.c*c.c); */
+/*                 v_avg_cand.segment<3>(3*c.p0) += -Idivm * c.normal; */
+/*                 v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal; */
+/*                 v_avg_cand.segment<3>(3*c.p2) += c.b * Idivm * c.normal; */
+/*                 v_avg_cand.segment<3>(3*c.p3) += c.c * Idivm * c.normal; */
+/*             } */
+/*         } */
 
         // Do the repulsion spring force
-    }
+    /* } */
+    q_cand = qprev + timeStep * v_avg_cand;
+    cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl;
+    VectorXd newForces = computeForce(q_cand, qprev);
+    v_cand = v_avg_cand + timeStep / 2 * g_cloth->getInverseMassMatrix() * newForces;
 
     g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
     for (uint i = 0; i < q_cand.size(); i++) {
