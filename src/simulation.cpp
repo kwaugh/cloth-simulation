@@ -128,10 +128,10 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
 
 void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
         VectorXd& qprev, VectorXd& vprev) {
-    VectorXd q_candbak = q_cand;
-    MatrixX3i F = g_cloth->F;
-    MatrixX3d Pos = g_cloth->Pos;
-    VectorXd mass = g_cloth->getMassVector();
+    const VectorXd q_candbak = q_cand;
+    const MatrixX3i F = g_cloth->F;
+    const MatrixX3d Pos = g_cloth->Pos;
+    const VectorXd mass = g_cloth->getMassVector();
     VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
 
     vector<Collision> collisions;
