@@ -136,6 +136,7 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
 
     vector<Collision> collisions;
     set<string> uniqueCollisions;
+    /* check for vertex-face collisions */
     for (int i = 0; i < F.rows(); i++) {
         for (int j = 0; j < q_cand.size() / 3; j++) {
             if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2))
@@ -157,6 +158,7 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
             }
         }
     }
+    /* check for edge-edge collisions */
     for (uint i = 0; i < F.rows(); i++) {
         for (uint j = i+1; j < F.rows(); j++) {
             for (int k = 0; k < 3; k++) {
@@ -174,7 +176,10 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
                         Pos.row(F(i, (k+1)%3)),
                         Pos.row(F(j, l)),
                         Pos.row(F(j, (l+1)%3)),
-                        F(i, k), F(i, (k+1)%3), F(j, l), F(j, (l+1)%3)
+                        F(i, k),
+                        F(i, (k+1)%3),
+                        F(j, l),
+                        F(j, (l+1)%3)
                     );
                     generateStringIds(to_string(F(i, k)), to_string(F(i, (k+1)%3)),
                         to_string(F(j, l)), to_string(F(j, (l+1)%3)), uniqueCollisions);
@@ -208,6 +213,7 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
                 /* cout << "c.p0: " << c.p0 << "  c.p1: " << c.p1 << "  c.p2: " << c.p2 << "  c.p3: " << c.p3 << endl; */
                 /* cout << "Idivm: " << Idivm << endl; */
                 /* cout << "c.normal: " << c.normal << endl; */
+                cout << "c.a: " << c.a << "  c.b: " << c.b << endl;
                 v_avg_cand.segment<3>(3*c.p0) += (1 - c.a) * Idivm * c.normal;
                 v_avg_cand.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
                 v_avg_cand.segment<3>(3*c.p2) += -(1 - c.b) * Idivm * c.normal;
@@ -233,16 +239,16 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     }
 
     q_cand = qprev + timeStep * v_avg_cand;
-    cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl;
+    /* cout << "q_cand - q_candbak: " << (q_cand - q_candbak).norm() << endl; */
     VectorXd oldForces = computeForce(q_candbak);
     VectorXd newForces = computeForce(q_cand);
-    cout << "newForces - oldForces: " << (newForces - oldForces).norm() << endl;
+    /* cout << "newForces - oldForces: " << (newForces - oldForces).norm() << endl; */
     VectorXd v_candbak = v_cand;
     /* v_cand = v_avg_cand + timeStep / 2 * g_cloth->getInverseMassMatrix() * newForces; */
     /* v_cand = v_avg_cand + timeStep / 2 * (v_candbak - vprev) / timeStep; */
     v_cand = v_avg_cand + timeStep * (v_candbak - vprev) / 4;
-    cout << "v_cand - v_candbak: " << (v_cand - v_candbak).norm() << endl;
-    cout << endl;
+    /* cout << "v_cand - v_candbak: " << (v_cand - v_candbak).norm() << endl; */
+    /* cout << endl; */
 }
 
 VectorXd Simulation::computeForce(VectorXd q) {
@@ -727,11 +733,12 @@ Vec3d convert(Vector3d v) {
 
 void Simulation::edgeEdgeIntersection(Collision& coll) {
 
+    const double EPSILON = 0.0000001;
     Vector3d v1 = coll.x1 - coll.x0;
     Vector3d v2 = coll.x3 - coll.x2;
     //Check if these are parallel
-    if (v1.cross(v2).norm() < 0.0000001) {
-        /* cout << "HEY fk u" */
+    if (v1.cross(v2).norm() < EPSILON) {
+        /* cout << "TODO: handle case when edges are almost parallel" << endl; */
     } else {
         MatrixX2d distMat(2, 2);
         distMat.row(0) = Vector2d(v1.dot(v1), -v1.dot(v2));
@@ -742,25 +749,46 @@ void Simulation::edgeEdgeIntersection(Collision& coll) {
         double bClamped = clamp(ab[1], 0.0, 1.0);
 
         Vector3d finalA, finalB;
+        /* TODO: is this necessary? */
+        /* if (abs(aClamped - ab[0]) < EPSILON && abs(bClamped - ab[1]) < EPSILON) { */
+        /*     finalA = coll.x0 + ab[0] * v1; */
+        /*     finalB = coll.x2 + ab[1] * v2; */
+        /* } else if (abs(aClamped - ab[0]) > abs(bClamped - ab[1])) { */
         if (abs(aClamped - ab[0]) > abs(bClamped - ab[1])) {
             finalA = coll.x0 + aClamped * v1;
+            coll.a = aClamped;
             Vector3d unclampedfinalB = coll.x2 + (finalA-coll.x2).dot(v2) / v2.dot(v2) * v2;
 
             if ((coll.x3 - unclampedfinalB).dot(coll.x2 - unclampedfinalB) > 0) {
-                finalB = ((coll.x3 - unclampedfinalB).norm() > (coll.x2 - unclampedfinalB).norm()) ?
-                    coll.x2 : coll.x3;
+                if ((coll.x3 - unclampedfinalB).norm() > (coll.x2 - unclampedfinalB).norm()) {
+                    finalB = coll.x2;
+                    coll.b = 0.0;
+                } else {
+                    finalB = coll.x3;
+                    coll.b = 1.0;
+                }
+                /* finalB = ((coll.x3 - unclampedfinalB).norm() > (coll.x2 - unclampedfinalB).norm()) ? */
+                /*     coll.x2 : coll.x3; */
             } else {
                 finalB = unclampedfinalB;
+                coll.b = (finalB - coll.x2).norm() / (coll.x3 - coll.x2).norm();
             }
         } else {
             finalB = coll.x2 + bClamped * v2;
+            coll.b = bClamped;
             Vector3d unclampedfinalA = coll.x0 + (finalB-coll.x0).dot(v1) / v1.dot(v1) * v1;
 
             if ((coll.x1 - unclampedfinalA).dot(coll.x0 - unclampedfinalA) > 0) {
-                finalA = ((coll.x1 - unclampedfinalA).norm() > (coll.x0 - unclampedfinalA).norm()) ?
-                    coll.x0 : coll.x1;
+                if ((coll.x1 - unclampedfinalA).norm() > (coll.x0 - unclampedfinalA).norm()) {
+                    finalA = coll.x0;
+                    coll.a = 0.0;
+                } else {
+                    finalA = coll.x1;
+                    coll.a = 1.0;
+                }
             } else {
                 finalA = unclampedfinalA;
+                coll.a = (finalA - coll.x0).norm() / (coll.x1 - coll.x0).norm();
             }
         }
         coll.normal = (finalB - finalA).normalized();
