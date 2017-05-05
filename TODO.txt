@@ -1,5 +1,4 @@
-- Fix bending force / switch back to old renderer
-- bvh
+- BVH
 - cloth/other object collisions
-- edge-edge collisions (spring forces and impulses)
-- midstep velocity collision handling???
+- friction
+- midstep velocity collision handling
