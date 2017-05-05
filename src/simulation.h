@@ -76,12 +76,12 @@ public:
     bool F_GRAV     = true;
     bool F_STRETCH  = true;
     bool F_SHEAR    = true;
-    bool F_BEND     = false;
+    bool F_BEND     = true;
     bool COLLISIONS = true;
 
     bool paused     = false;
     int vCloth      = 5;
-    double scale       = 10;
+    double scale       = 30;
     double clothThickness = 0.01 * scale;
 
     int runCount = 0;

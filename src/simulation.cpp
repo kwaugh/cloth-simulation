@@ -136,89 +136,89 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
 
     vector<Collision> collisions;
-    vector<Face> faces;
-    vector<AlignedBox<double, 3>> aabbs;
-    for (int i = 0; i < F.rows(); i++) {
-        faces.push_back(Face(
-            Pos.row(F(i, 0)),
-            Pos.row(F(i, 1)),
-            Pos.row(F(i, 2)),
-            i,
-            F(i, 0),
-            F(i, 1),
-            F(i, 2)
-        ));
-        aabbs.push_back(faces[i].getAABB());
-    }
-    KdBVH<double, 3, Face> bvh(faces.begin(), faces.end(), aabbs.begin(), aabbs.end());
-    for (int i = 0; i < Pos.rows(); i++) {
-        Intersector inter(Pos.row(i), i, clothThickness);
-        BVIntersect(bvh, inter);
-        collisions.insert(collisions.end(), inter.collisions.begin(), inter.collisions.end());
-    }
+    /* vector<Face> faces; */
+    /* vector<AlignedBox<double, 3>> aabbs; */
+    /* for (int i = 0; i < F.rows(); i++) { */
+    /*     faces.push_back(Face( */
+    /*         Pos.row(F(i, 0)), */
+    /*         Pos.row(F(i, 1)), */
+    /*         Pos.row(F(i, 2)), */
+    /*         i, */
+    /*         F(i, 0), */
+    /*         F(i, 1), */
+    /*         F(i, 2) */
+    /*     )); */
+    /*     aabbs.push_back(faces[i].getAABB()); */
+    /* } */
+    /* KdBVH<double, 3, Face> bvh(faces.begin(), faces.end(), aabbs.begin(), aabbs.end()); */
+    /* for (int i = 0; i < Pos.rows(); i++) { */
+    /*     Intersector inter(Pos.row(i), i, clothThickness); */
+    /*     BVIntersect(bvh, inter); */
+    /*     collisions.insert(collisions.end(), inter.collisions.begin(), inter.collisions.end()); */
+    /* } */
     /* cout << "collisions.size(): " << collisions.size() << endl; */
 
-/*     set<string> uniqueCollisions; */
-/*     /1* check for vertex-face collisions *1/ */
-/*     for (int i = 0; i < F.rows(); i++) { */
-/*         for (int j = 0; j < q_cand.size() / 3; j++) { */
-/*             if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2)) */
-/*                 continue; */
-/*             Collision coll( */
-/*                 false, */
-/*                 Pos.row(j), */
-/*                 Pos.row(F(i, 0)), */
-/*                 Pos.row(F(i, 1)), */
-/*                 Pos.row(F(i, 2)), */
-/*                 j, F(i, 0), F(i, 1), F(i, 2) */
-/*             ); */
-/*             coll.distance = */
-/*                 pointPlaneDist(Pos.row(j), Pos.row(F(i, 0)), Pos.row(F(i, 1)), Pos.row(F(i, 2))); */
-/*             bool intersected = pointTriIntersection(coll); */
-/*             if (coll.distance < clothThickness && intersected) { */
-/*                 collisions.push_back(coll); */
-/*                 g_cloth->Colors[i] += .01; */
-/*             } */
-/*         } */
-/*     } */
-/*     /1* check for edge-edge collisions *1/ */
-/*     for (uint i = 0; i < F.rows(); i++) { */
-/*         for (uint j = i+1; j < F.rows(); j++) { */
-/*             for (int k = 0; k < 3; k++) { */
-/*                 for (int l = 0; l < 3; l++) { */
-/*                     string id = to_string(F(i, k)) + "." + to_string(F(i, (k+1)%3)) + "." + */
-/*                         to_string(F(j, l)) + "." + to_string(F(j, (l+1)%3)); */
-/*                     if (F(i, k) == F(j, l) || F(i, k) == F(j, (l+1)%3) || */
-/*                             F(i, (k+1)%3) == F(j, l) || F(i, (k+1)%3) == F(j, (l+1)%3) || */
-/*                             uniqueCollisions.count(id) */
-/*                         ) */
-/*                         continue; */
-/*                     Collision coll( */
-/*                         true, */
-/*                         Pos.row(F(i, k)), */
-/*                         Pos.row(F(i, (k+1)%3)), */
-/*                         Pos.row(F(j, l)), */
-/*                         Pos.row(F(j, (l+1)%3)), */
-/*                         F(i, k), */
-/*                         F(i, (k+1)%3), */
-/*                         F(j, l), */
-/*                         F(j, (l+1)%3) */
-/*                     ); */
-/*                     generateStringIds(to_string(F(i, k)), to_string(F(i, (k+1)%3)), */
-/*                         to_string(F(j, l)), to_string(F(j, (l+1)%3)), uniqueCollisions); */
-/*                     edgeEdgeIntersection(coll); */
-/*                     if (coll.distance < clothThickness) { */
-/*                         collisions.push_back(coll); */
-/*                         g_cloth->Colors[i] += .01; */
-/*                         g_cloth->Colors[j] += .01; */
-/*                         /1* cout << "adding collision: " << F(i, k) << " " << F(i, (k+1)%3) << " " << F(j, l) << " " << F(j, (l+1)%3) << endl; *1/ */
-/*                         /1* cout << "collisions.size(): " << collisions.size() << endl; *1/ */
-/*                         /1* cout << "i: " << i << "  j: " << j << endl; *1/ */
-/*                     } */
-/*                 } */
-/*             } */
-/*         } */
-/*     } */
+    set<string> uniqueCollisions;
+    /* check for vertex-face collisions */
+    for (int i = 0; i < F.rows(); i++) {
+        for (int j = 0; j < q_cand.size() / 3; j++) {
+            if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2))
+                continue;
+            Collision coll(
+                false,
+                Pos.row(j),
+                Pos.row(F(i, 0)),
+                Pos.row(F(i, 1)),
+                Pos.row(F(i, 2)),
+                j, F(i, 0), F(i, 1), F(i, 2)
+            );
+            coll.distance =
+                pointPlaneDist(Pos.row(j), Pos.row(F(i, 0)), Pos.row(F(i, 1)), Pos.row(F(i, 2)));
+            bool intersected = pointTriIntersection(coll);
+            if (coll.distance < clothThickness && intersected) {
+                collisions.push_back(coll);
+                g_cloth->Colors[i] += .01;
+            }
+        }
+    }
+    /* check for edge-edge collisions */
+    /* for (uint i = 0; i < F.rows(); i++) { */
+    /*     for (uint j = i+1; j < F.rows(); j++) { */
+    /*         for (int k = 0; k < 3; k++) { */
+    /*             for (int l = 0; l < 3; l++) { */
+    /*                 string id = to_string(F(i, k)) + "." + to_string(F(i, (k+1)%3)) + "." + */
+    /*                     to_string(F(j, l)) + "." + to_string(F(j, (l+1)%3)); */
+    /*                 if (F(i, k) == F(j, l) || F(i, k) == F(j, (l+1)%3) || */
+    /*                         F(i, (k+1)%3) == F(j, l) || F(i, (k+1)%3) == F(j, (l+1)%3) || */
+    /*                         uniqueCollisions.count(id) */
+    /*                     ) */
+    /*                     continue; */
+    /*                 Collision coll( */
+    /*                     true, */
+    /*                     Pos.row(F(i, k)), */
+    /*                     Pos.row(F(i, (k+1)%3)), */
+    /*                     Pos.row(F(j, l)), */
+    /*                     Pos.row(F(j, (l+1)%3)), */
+    /*                     F(i, k), */
+    /*                     F(i, (k+1)%3), */
+    /*                     F(j, l), */
+    /*                     F(j, (l+1)%3) */
+    /*                 ); */
+    /*                 generateStringIds(to_string(F(i, k)), to_string(F(i, (k+1)%3)), */
+    /*                     to_string(F(j, l)), to_string(F(j, (l+1)%3)), uniqueCollisions); */
+    /*                 edgeEdgeIntersection(coll); */
+    /*                 if (coll.distance < clothThickness) { */
+    /*                     collisions.push_back(coll); */
+    /*                     g_cloth->Colors[i] += .01; */
+    /*                     g_cloth->Colors[j] += .01; */
+    /*                     /1* cout << "adding collision: " << F(i, k) << " " << F(i, (k+1)%3) << " " << F(j, l) << " " << F(j, (l+1)%3) << endl; *1/ */
+    /*                     /1* cout << "collisions.size(): " << collisions.size() << endl; *1/ */
+    /*                     /1* cout << "i: " << i << "  j: " << j << endl; *1/ */
+    /*                 } */
+    /*             } */
+    /*         } */
+    /*     } */
+    /* } */
 
     VectorXd v_diff_impulse(q_cand.size());
     VectorXd v_diff_spring(q_cand.size());
@@ -678,10 +678,10 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                 dqA.row(3) = Vector4d( 0,  0,  0,  0);
 
                 MatrixX4d dqB(4, 4);
-                dqA.row(0) = Vector4d( 0,  0,  0,  0);
-                dqA.row(1) = Vector4d( 0,  0,  1, -1);
-                dqA.row(2) = Vector4d( 0, -1,  0,  1);
-                dqA.row(3) = Vector4d( 0,  1, -1,  0);
+                dqB.row(0) = Vector4d( 0,  0,  0,  0);
+                dqB.row(1) = Vector4d( 0,  0,  1, -1);
+                dqB.row(2) = Vector4d( 0, -1,  0,  1);
+                dqB.row(3) = Vector4d( 0,  1, -1,  0);
 
                 for (int m = 0; m < 4; m++) {
                     Vector3d dCdxm;
@@ -896,6 +896,20 @@ bool Intersector::intersectObject(Face f) {
 }
 
 bool Intersector::pointTriIntersection(Collision& coll) {
+    Vector3d unitNorm = (coll.x2 - coll.x1).cross(coll.x3 - coll.x1).normalized();
+    double dist = unitNorm.dot(coll.x0 - coll.x1);
+    Vector3d projectedPoint = coll.x0 - (dist * unitNorm);
+    Vector3d bary = Cloth::getBary(projectedPoint, coll.x1, coll.x2, coll.x3);
+
+    coll.normal = unitNorm;
+    coll.a = bary[0];
+    coll.b = bary[1];
+    coll.c = bary[2];
+
+    return coll.a > 0 && coll.b > 0 && coll.c > 0;
+}
+
+bool Simulation::pointTriIntersection(Collision& coll) {
     Vector3d unitNorm = (coll.x2 - coll.x1).cross(coll.x3 - coll.x1).normalized();
     double dist = unitNorm.dot(coll.x0 - coll.x1);
     Vector3d projectedPoint = coll.x0 - (dist * unitNorm);
