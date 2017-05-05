@@ -1,11 +1,5 @@
-- GUI with libigl
-- make dynamics faster
-    - newton's method not converging?
-- collisions
-    - compute bounding box at each time step
-    - bvh to find intersecting bounding boxes
-    - pass intersecting points to library to find exact collisions
-    - handle collisions
-        - penalty force
-        - impulses
-- tearing along triangle boundaries
+- Fix bending force / switch back to old renderer
+- bvh
+- cloth/other object collisions
+- edge-edge collisions (spring forces and impulses)
+- midstep velocity collision handling???

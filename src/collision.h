@@ -10,6 +10,7 @@ public:
     bool isEdgeEdge;
     Vector3d x0, x1, x2, x3;
     int p0, p1, p2, p3;
+    int fIndex;
 
     double a, b, c;
     Vector3d normal;

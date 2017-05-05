@@ -38,7 +38,7 @@ public:
     vector<set<int>> vertexToFaces;
     vector<vector<int>> adjacentFaces;
 
-    Vector3d getBary(Vector3d point, Vector3d a, Vector3d b, Vector3d c);
+    static Vector3d getBary(Vector3d point, Vector3d a, Vector3d b, Vector3d c);
      
 
     void buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev);

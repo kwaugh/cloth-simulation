@@ -6,6 +6,11 @@
 #include "../lib/eigen3/Eigen/Core"
 #include "../lib/eigen3/Eigen/Geometry"
 #include "../lib/eigen3/Eigen/Sparse"
+#include "../lib/eigen3/unsupported/Eigen/BVH"
+/* #include <Eigen/Core> */
+/* #include <Eigen/Geometry> */
+/* #include <Eigen/Sparse> */
+/* #include <unsupported/Eigen/BVH> */
 #include <glm/glm.hpp>
 #include "cloth.h"
 #include "sphere.h"
@@ -15,6 +20,33 @@
 
 using namespace Eigen;
 using namespace std;
+
+class Simulation;
+
+struct Face {
+    Vector3d x1, x2, x3;
+    int index, i1, i2, i3;
+
+    Face() {}
+    Face(Vector3d x1, Vector3d x2, Vector3d x3, int index, int i1, int i2, int i3)
+        : x1(x1), x2(x2), x3(x3), index(index), i1(i1), i2(i2), i3(i3) {}
+
+    AlignedBox<double, 3> getAABB();
+};
+
+struct Intersector {
+    Vector3d p;
+    int index;
+    vector<Collision> collisions;
+    double clothThickness;
+
+    Intersector(Vector3d p, int index, double clothThickness)
+        : p(p), index(index), clothThickness(clothThickness) { }
+
+    bool intersectVolume(AlignedBox<double, 3> aabb);
+    bool intersectObject(Face f);
+    bool pointTriIntersection(Collision& coll);
+};
 
 class Simulation {
 public:
@@ -33,8 +65,8 @@ public:
     static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
     void reset();
     /* x0 is point, x1-x3 is plane */
-    double pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3);
-    bool pointTriIntersection(Collision& coll);
+    static double pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3);
+    static bool pointTriIntersection(Collision& coll);
     /* double edgeEdgeDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3); */
     void edgeEdgeIntersection(Collision& coll);
 
@@ -53,6 +85,7 @@ public:
     double clothThickness = 0.01 * scale;
 
     int runCount = 0;
+    long long stepCount = 0;
 
 
 private:
