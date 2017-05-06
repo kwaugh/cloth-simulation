@@ -1,7 +1,6 @@
 #ifndef VIEWER_WRAPPER_H
 #define VIEWER_WRAPPER_H
 #include "simulation.h"
-#include <mutex>
 
 class ViewerWrapper {
 
@@ -10,7 +9,6 @@ class ViewerWrapper {
 	void start(); 
     private:
 	Simulation *sim_;
-        mutex renderLock;
 
 }; 
 #endif

@@ -60,6 +60,7 @@ public:
     bool F_SHEAR    = true;
     bool F_BEND     = true;
     bool COLLISIONS = true;
+    bool VIS_COLLISIONS = false;
 
     bool paused     = false;
     int vCloth      = 5;
