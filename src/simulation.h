@@ -16,20 +16,6 @@
 using namespace Eigen;
 using namespace std;
 
-/* struct Intersector { */
-/*     Vector3d p; */
-/*     int index; */
-/*     vector<Collision> collisions; */
-/*     double clothThickness; */
-
-/*     Intersector(Vector3d p, int index, double clothThickness) */
-/*         : p(p), index(index), clothThickness(clothThickness) { } */
-
-/*     bool intersectVolume(AlignedBox<double, 3> aabb); */
-/*     bool intersectObject(Face f); */
-/*     bool pointTriIntersection(Collision& coll); */
-/* }; */
-
 class Simulation {
 public:
     Simulation();

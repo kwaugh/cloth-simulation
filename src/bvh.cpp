@@ -37,17 +37,6 @@ BVHNode::BVHNode(vector<Face> faces, double clothThickness) : clothThickness(clo
 	isLeaf = true;
 	face = faces[0];
 	aabb = face.getAABB(clothThickness);
-        assert(aabb.contains(face.x1));
-        assert(aabb.contains(face.x2));
-        assert(aabb.contains(face.x3));
-        assert(aabb.contains(face.x1 + clothThickness * face.faceNormal));
-        assert(aabb.contains(face.x1 - clothThickness * face.faceNormal));
-        assert(aabb.contains(face.x2 + clothThickness * face.faceNormal));
-        assert(aabb.contains(face.x2 - clothThickness * face.faceNormal));
-        assert(aabb.contains(face.x3 + clothThickness * face.faceNormal));
-        assert(aabb.contains(face.x3 - clothThickness * face.faceNormal));
-        /* cout << "face.index: " << face.index << endl; */
-        /* cout << "face.i1: " << face.i1 << "  face.i2: " << face.i2 << "  face.i3: " << face.i3 << endl; */
     } else {
         isLeaf = false;
 	Vector3d minCorner, maxCorner;
@@ -73,8 +62,6 @@ BVHNode::BVHNode(vector<Face> faces, double clothThickness) : clothThickness(clo
 		longestAxisVal = axisVal;
 	    }
 	}
-        /* cout << "longestAxis: " << longestAxis << endl; */
-	/* sort along longest axis */
         std::sort(faces.begin(), faces.end(), FaceComparator(longestAxis));
         vector<Face> lList(faces.size() / 2);
         vector<Face> rList(faces.size() - faces.size() / 2);
@@ -84,8 +71,6 @@ BVHNode::BVHNode(vector<Face> faces, double clothThickness) : clothThickness(clo
         for (uint i = 0; i < rList.size(); i++) {
             rList[i] = faces[lList.size() + i];
         }
-        /* cout << "lList.size(): " << lList.size() << endl; */
-        /* cout << "rList.size(): " << rList.size() << endl; */
 
         left = new BVHNode(lList, clothThickness);
         right = new BVHNode(rList, clothThickness);
@@ -109,7 +94,6 @@ void BVHNode::intersect(Vector3d p, int pIndex, vector<Collision>& collisions) {
     } else {
         if (pIndex == face.i1 || pIndex == face.i2 || pIndex == face.i3) return;
 	Collision coll(
-            false,
             p,
             face.x1,
             face.x2,
@@ -119,9 +103,6 @@ void BVHNode::intersect(Vector3d p, int pIndex, vector<Collision>& collisions) {
             face.i2,
             face.i3
         );
-        /* cout << "pIndex: " << pIndex << "  faceIndex: " << face.index << endl; */
-        /* cout << "face.i1: " << face.i1 << "  face.i2: " << face.i2 << "  face.i3: " << face.i3 << endl; */
-        /* cout << "checking for intersection" << endl; */
 	coll.distance = pointPlaneDist(p, face.x1, face.x2, face.x3);
 	if (pointTriIntersection(coll) && coll.distance < clothThickness) {
             /* cout << "found intersection" << endl; */
