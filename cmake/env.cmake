@@ -6,12 +6,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # Flags
-#set(CMAKE_CXX_FLAGS "--std=c++11 -g -fmax-errors=1")
-# it should use openmp by default
-set(CMAKE_CXX_FLAGS "--std=c++11 -g ")
-#set(CMAKE_CXX_FLAGS "--std=c++11 -g -pg")
-#SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
-#SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+set(CMAKE_CXX_FLAGS "--std=c++11 -g")
 
 # Packages
 #OpenGL
@@ -30,15 +25,6 @@ if (APPLE)
 	LIST(APPEND stdgl_libraries iconv ${COCOA_LIBRARY} ${IOKIT_LIBRARY} ${CoreVideo_LIBRARY})
 endif(APPLE)
 
-#EIGEN
-set(EIGEN3_DIR ${CMAKE_SOURCE_DIR}/lib/eigen/cmake)
-FIND_PACKAGE(Eigen3 REQUIRED NO_MODULE)
-if (NOT EIGEN3_FOUND)
-    message(FATAL_ERROR "Eigen not found.")
-endif()
-message(STATUS "Eigen found.")
-
-#LIBIGL
 FIND_PACKAGE(LIBIGL REQUIRED)
 
 if (NOT LIBIGL_FOUND)
