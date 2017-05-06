@@ -54,7 +54,7 @@ BVHNode::BVHNode(vector<Face> faces, double clothThickness) : clothThickness(clo
         AlignedBox<double, 3> faceAABB = faces[0].getAABB(clothThickness);
         minCorner = faceAABB.min();
         maxCorner = faceAABB.max();
-	for (int i = 1; i < faces.size(); i++) {
+	for (uint i = 1; i < faces.size(); i++) {
 	    faceAABB = faces[i].getAABB(clothThickness);
 	    for (int j = 0; j < 3; j++) {
 		minCorner[j] = std::min(minCorner[j], faceAABB.min()[j]);
@@ -78,10 +78,10 @@ BVHNode::BVHNode(vector<Face> faces, double clothThickness) : clothThickness(clo
         std::sort(faces.begin(), faces.end(), FaceComparator(longestAxis));
         vector<Face> lList(faces.size() / 2);
         vector<Face> rList(faces.size() - faces.size() / 2);
-        for (int i = 0; i < lList.size(); i++) {
+        for (uint i = 0; i < lList.size(); i++) {
             lList[i] = faces[i];
         }
-        for (int i = 0; i < rList.size(); i++) {
+        for (uint i = 0; i < rList.size(); i++) {
             rList[i] = faces[lList.size() + i];
         }
         /* cout << "lList.size(): " << lList.size() << endl; */
