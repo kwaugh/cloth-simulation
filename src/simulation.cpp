@@ -306,27 +306,28 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
             Vector3d vel2 = c.a * vprev.segment<3>(3*c.p1) +
                             c.b * vprev.segment<3>(3*c.p2) +
                             c.c * vprev.segment<3>(3*c.p3);
-            double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
+            double relvel = -(vel1.dot(c.normal) - vel2.dot(c.normal));
             double d = clothThickness - (c.x3 - c.a * c.x0 - c.b * c.x1 - c.c * c.x2).dot(c.normal);
             /* cout << "relvel: " << relvel << "  other: " << .1 * d / timeStep << endl; */
-            if (-relvel >= 0.1 * d / timeStep) {
-                cout << "wazzzuhhh dude?" << endl;
+            if (relvel >= 0.1 * d / timeStep) {
+                /* cout << "wazzzuhhh dude?" << endl; */
             } else {
                 double m1 = mass[c.p0];
-                double m2 = c.a * mass[c.p1] +
+                double m2 =
+                    c.a * mass[c.p1] +
                     c.b * mass[c.p2] +
                     c.c * mass[c.p3];
                 double avgMass = (m1 + m2) / 2;
                 double Ir = -1 * std::min(
                     timeStep * g_cloth->kstretch * d,
-                    avgMass * (.1 * d / timeStep + relvel)
+                    avgMass * (.1 * d / timeStep - relvel)
                 );
                 double I = 2 * Ir / (1 + c.a*c.a + c.b*c.b + c.c*c.c);
-                cout << "repulsion spring force: " << I << endl;
-                v_diff_spring.segment<3>(3*c.p0) += -I / mass[c.p0] * c.normal;
-                v_diff_spring.segment<3>(3*c.p1) += c.a * I / mass[c.p1] * c.normal;
-                v_diff_spring.segment<3>(3*c.p2) += c.b * I / mass[c.p2] * c.normal;
-                v_diff_spring.segment<3>(3*c.p3) += c.c * I / mass[c.p3] * c.normal;
+                /* cout << "repulsion spring force: " << I << endl; */
+                v_diff_spring.segment<3>(3*c.p0) -= -I / mass[c.p0] * c.normal;
+                v_diff_spring.segment<3>(3*c.p1) -= c.a * I / mass[c.p1] * c.normal;
+                v_diff_spring.segment<3>(3*c.p2) -= c.b * I / mass[c.p2] * c.normal;
+                v_diff_spring.segment<3>(3*c.p3) -= c.c * I / mass[c.p3] * c.normal;
 
                 numSpringForces[c.p0] += 1;
                 numSpringForces[c.p1] += 1;
