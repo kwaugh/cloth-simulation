@@ -1,3 +1,4 @@
+- fix penalty force
 - cloth/other object collisions
 - friction
 - midstep velocity collision handling
