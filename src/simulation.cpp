@@ -5,6 +5,8 @@
 #include <algorithm>
 #include "vec.h"
 #include "rootparitycollisiontest.h"
+#include <set>
+#include "bvh.h"
 
 #define BICBOI BiCGSTAB
 
@@ -12,17 +14,17 @@ using namespace std;
 using namespace glm;
 using namespace Eigen;
 
-void generateStringIds(string a, string b, string c, string d, set<string>& uniqueIds) {
-    uniqueIds.insert(a + "." + b + "." + c + "." + d);
-    uniqueIds.insert(b + "." + a + "." + c + "." + d);
-    uniqueIds.insert(a + "." + b + "." + d + "." + c);
-    uniqueIds.insert(b + "." + a + "." + d + "." + c);
+/* void generateStringIds(string a, string b, string c, string d, set<string>& uniqueIds) { */
+/*     uniqueIds.insert(a + "." + b + "." + c + "." + d); */
+/*     uniqueIds.insert(b + "." + a + "." + c + "." + d); */
+/*     uniqueIds.insert(a + "." + b + "." + d + "." + c); */
+/*     uniqueIds.insert(b + "." + a + "." + d + "." + c); */
 
-    uniqueIds.insert(c + "." + d + "." + a + "." + b);
-    uniqueIds.insert(d + "." + c + "." + a + "." + b);
-    uniqueIds.insert(c + "." + d + "." + b + "." + a);
-    uniqueIds.insert(d + "." + c + "." + b + "." + a);
-}
+/*     uniqueIds.insert(c + "." + d + "." + a + "." + b); */
+/*     uniqueIds.insert(d + "." + c + "." + a + "." + b); */
+/*     uniqueIds.insert(c + "." + d + "." + b + "." + a); */
+/*     uniqueIds.insert(d + "." + c + "." + b + "." + a); */
+/* } */
 
 Simulation::Simulation() {
     reset();
@@ -136,6 +138,24 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     VectorXd v_avg_cand = (q_cand - qprev) / timeStep;
 
     vector<Collision> collisions;
+    vector<Face> faces;
+    for (int i = 0; i < F.rows(); i++) {
+        faces.push_back(Face(
+            Pos.row(F(i, 0)),
+            Pos.row(F(i, 1)),
+            Pos.row(F(i, 2)),
+            i,
+            F(i, 0),
+            F(i, 1),
+            F(i, 2)
+        ));
+    }
+    BVHNode root(faces, clothThickness);
+    for (int i = 0; i < Pos.rows(); i++) {
+        root.intersect(Pos.row(i), i, collisions);
+    }
+    /* cout << "collisions.size(): " << collisions.size() << endl; */
+    /* Using Eigen's BVH */
     /* vector<Face> faces; */
     /* vector<AlignedBox<double, 3>> aabbs; */
     /* for (int i = 0; i < F.rows(); i++) { */
@@ -158,29 +178,30 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     /* } */
     /* cout << "collisions.size(): " << collisions.size() << endl; */
 
-    set<string> uniqueCollisions;
+    /* set<string> uniqueCollisions; */
+
     /* check for vertex-face collisions */
-    for (int i = 0; i < F.rows(); i++) {
-        for (int j = 0; j < q_cand.size() / 3; j++) {
-            if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2))
-                continue;
-            Collision coll(
-                false,
-                Pos.row(j),
-                Pos.row(F(i, 0)),
-                Pos.row(F(i, 1)),
-                Pos.row(F(i, 2)),
-                j, F(i, 0), F(i, 1), F(i, 2)
-            );
-            coll.distance =
-                pointPlaneDist(Pos.row(j), Pos.row(F(i, 0)), Pos.row(F(i, 1)), Pos.row(F(i, 2)));
-            bool intersected = pointTriIntersection(coll);
-            if (coll.distance < clothThickness && intersected) {
-                collisions.push_back(coll);
-                g_cloth->Colors[i] += .01;
-            }
-        }
-    }
+    /* for (int i = 0; i < F.rows(); i++) { */
+    /*     for (int j = 0; j < q_cand.size() / 3; j++) { */
+    /*         if (j == F(i, 0) || j == F(i, 1) || j == F(i, 2)) */
+    /*             continue; */
+    /*         Collision coll( */
+    /*             false, */
+    /*             Pos.row(j), */
+    /*             Pos.row(F(i, 0)), */
+    /*             Pos.row(F(i, 1)), */
+    /*             Pos.row(F(i, 2)), */
+    /*             j, F(i, 0), F(i, 1), F(i, 2) */
+    /*         ); */
+    /*         coll.distance = */
+    /*             pointPlaneDist(Pos.row(j), Pos.row(F(i, 0)), Pos.row(F(i, 1)), Pos.row(F(i, 2))); */
+    /*         bool intersected = pointTriIntersection(coll); */
+    /*         if (coll.distance < clothThickness && intersected) { */
+    /*             collisions.push_back(coll); */
+    /*             /1* g_cloth->Colors[i] += .01; *1/ */
+    /*         } */
+    /*     } */
+    /* } */
     /* check for edge-edge collisions */
     /* for (uint i = 0; i < F.rows(); i++) { */
     /*     for (uint j = i+1; j < F.rows(); j++) { */
@@ -229,6 +250,7 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     numImpulses.setZero();
     numSpringForces.setZero();
     for (Collision c : collisions) {
+        g_cloth ->Colors[c.fIndex] += .01;
         if (c.isEdgeEdge) {
             /* Vector3d vel1 = c.a * vprev.segment<3>(3*c.p1) + (1 - c.a) * vprev.segment<3>(3*c.p0); */
             /* Vector3d vel2 = c.b * vprev.segment<3>(3*c.p3) + (1 - c.b) * vprev.segment<3>(3*c.p2); */
@@ -287,8 +309,8 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
             double d = clothThickness - (c.x3 - c.a * c.x0 - c.b * c.x1 - c.c * c.x2).dot(c.normal);
             /* cout << "relvel: " << relvel << "  other: " << .1 * d / timeStep << endl; */
-            if (-relvel <= 0.1 * d / timeStep) {
-
+            if (-relvel >= 0.1 * d / timeStep) {
+                cout << "wazzzuhhh dude?" << endl;
             } else {
                 double m1 = mass[c.p0];
                 double m2 = c.a * mass[c.p1] +
@@ -869,45 +891,21 @@ void Simulation::edgeEdgeIntersection(Collision& coll) {
     }
 }
 
+/* bool Intersector::intersectVolume(AlignedBox<double, 3> aabb) { */
+/*     return aabb.contains(p); */
+/* } */
 
-AlignedBox<double, 3> Face::getAABB() {
-    Vector3d minVal, maxVal;
-    for (int i = 0; i < 3; i++) {
-        minVal[i] = std::min(std::min(x1[i], x2[i]), x3[i]);
-        maxVal[i] = std::max(std::max(x1[i], x2[i]), x3[i]);
-    }
-    return AlignedBox<double, 3>(minVal, maxVal);
-}
-
-bool Intersector::intersectVolume(AlignedBox<double, 3> aabb) {
-    return aabb.contains(p);
-}
-
-bool Intersector::intersectObject(Face f) {
-    Collision c(false, p, f.x1, f.x2, f.x3, f.index, f.i1, f.i2, f.i3);
-    c.distance = Simulation::pointPlaneDist(p, f.x1, f.x2, f.x3);
-    c.fIndex = f.index;
-    bool intersected = pointTriIntersection(c);
-    if (c.distance < clothThickness && intersected) {
-        collisions.push_back(c);
-        return true;
-    }
-    return false;
-}
-
-bool Intersector::pointTriIntersection(Collision& coll) {
-    Vector3d unitNorm = (coll.x2 - coll.x1).cross(coll.x3 - coll.x1).normalized();
-    double dist = unitNorm.dot(coll.x0 - coll.x1);
-    Vector3d projectedPoint = coll.x0 - (dist * unitNorm);
-    Vector3d bary = Cloth::getBary(projectedPoint, coll.x1, coll.x2, coll.x3);
-
-    coll.normal = unitNorm;
-    coll.a = bary[0];
-    coll.b = bary[1];
-    coll.c = bary[2];
-
-    return coll.a > 0 && coll.b > 0 && coll.c > 0;
-}
+/* bool Intersector::intersectObject(Face f) { */
+/*     Collision c(false, p, f.x1, f.x2, f.x3, f.index, f.i1, f.i2, f.i3); */
+/*     c.distance = Simulation::pointPlaneDist(p, f.x1, f.x2, f.x3); */
+/*     c.fIndex = f.index; */
+/*     bool intersected = pointTriIntersection(c); */
+/*     if (c.distance < clothThickness && intersected) { */
+/*         collisions.push_back(c); */
+/*         return true; */
+/*     } */
+/*     return false; */
+/* } */
 
 bool Simulation::pointTriIntersection(Collision& coll) {
     Vector3d unitNorm = (coll.x2 - coll.x1).cross(coll.x3 - coll.x1).normalized();
