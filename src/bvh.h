@@ -2,9 +2,9 @@
 #define BVH_H
 
 #include <iostream>
-#include "../lib/eigen3/Eigen/Core"
-#include "../lib/eigen3/Eigen/Geometry"
-#include "../lib/eigen3/Eigen/Sparse"
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/Sparse>
 #include "face.h"
 #include "collision.h"
 #include "cloth.h"

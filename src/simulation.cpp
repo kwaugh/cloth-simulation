@@ -74,7 +74,7 @@ void Simulation::takeSimulationStep() {
 
     g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
     for (uint i = 0; i < q_cand.size(); i++) {
-        if (isnan(q_cand[i])) {
+        if (std::isnan(q_cand[i])) {
             cout << "NaN" << endl;
             exit(1);
         }

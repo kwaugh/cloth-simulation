@@ -1,8 +1,8 @@
 #ifndef FACE_H
 #define FACE_H
 
-#include "../lib/eigen3/Eigen/Core"
-#include "../lib/eigen3/Eigen/Geometry"
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 using namespace Eigen;
 using namespace std;

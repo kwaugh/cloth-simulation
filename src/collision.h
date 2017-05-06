@@ -1,7 +1,7 @@
 #ifndef COLLISION_H
 #define COLLISION_H
 
-#include "../lib/eigen3/Eigen/Core"
+#include <Eigen/Core>
 
 using namespace Eigen;
 
