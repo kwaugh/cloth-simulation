@@ -8,9 +8,30 @@ using namespace glm;
 using namespace Eigen;
 
 Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
+        double& scale, Vector3d startPos) {
+    buildCloth(nodeFilename, eleFilename, scale, startPos);
+    /* calculate the surface area of the smallest face */
+    double smallestSA = 9999999.9;
+    for (int i = 0; i < F.rows(); i++) {
+        double sa = ((Pos.row(F(i, 1)) - Pos.row((F(i, 0))))
+                .cross(Pos.row((F(i, 2))) - Pos.row((F(i, 1))))).norm() / 2.0;
+        smallestSA = std::min(smallestSA, sa);
+    }
+    cout << "smallestSA: " << smallestSA << endl;
+    if (smallestSA < 12.5) { /* 12.5 seemed legit during test */
+        scale *= static_cast<int>(std::ceil(12.5 / smallestSA));
+        cout << "dynamically adjusting cloth scale for stability" << endl;
+        cout << "new scale: " << scale << endl;
+        buildCloth(nodeFilename, eleFilename, scale, startPos);
+    }
+}
+
+Cloth::~Cloth() { }
+
+void Cloth::buildCloth(const string& nodeFilename, const string& eleFilename,
         double scale, Vector3d startPos) {
     ifstream nodeIfs(nodeFilename.c_str());
-    if (!nodeIfs) { cout << "dumlaya!" << endl; exit(1); }
+    if (!nodeIfs) { cout << "Couldn't find the triangle file!" << endl; exit(1); }
 
     int naeem; // dummy variable
     int numVerts;
@@ -24,10 +45,7 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
         Pos(i, 0) = (a+1+startPos[0]) * scale / 2.0;
         Pos(i, 1) = startPos[2];
         Pos(i, 2) = (b+1+startPos[1]) * scale / 2.0;
-        /* Pos(i, 0) = a; */
-        /* Pos(i, 1) = startPos[2]; */
-        /* Pos(i, 2) = b; */
-        V(i, 0) = a * scale / 2.0; /* TODO: is this valid to mult by scale? */
+        V(i, 0) = a * scale / 2.0;
         V(i, 1) = b * scale / 2.0;
     }
 
@@ -45,7 +63,6 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
         if (norm.dot(Vector3d(0, 1, 0)) < 0) {
             F.row(i) = Vector3i(x-1, z-1, y-1);
         }
-        /* F.row(i) = Vector3i(x, y, z); */
     }
     Vel.resize(numVerts, 3);
     Vel.setZero();
@@ -113,8 +130,6 @@ Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
         }
     }
 }
-
-Cloth::~Cloth() { }
 
 void Cloth::generate_geometry(vector<vec4>& obj_vertices,
         vector<uvec3>& obj_faces, vector<vec4>& obj_normals) const {

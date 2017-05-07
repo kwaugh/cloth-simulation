@@ -23,6 +23,7 @@ void Simulation::reset() {
             "../src/resources/cloth." + to_string(vCloth) + ".ele", scale, Vector3d(-1, 0, .5));
     g_sphere = make_shared<Sphere>("../src/resources/sphere.node",
             "../src/resources/sphere.ele", 1, Vector3d(0, 0, 1));
+    cout << "new scale in simulation: " << scale << endl;
 }
 
 Simulation::~Simulation() {}

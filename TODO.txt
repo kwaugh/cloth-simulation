@@ -5,3 +5,4 @@
     - basically just keep handling the collisions in a loop until there are
     no more collisions detected. If a max iteration number is hit, we can just
     continue until the next time step.
+- multithread

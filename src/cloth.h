@@ -18,8 +18,10 @@ class Cloth {
 public:
     Cloth() {}
     Cloth(const string &nodeFilename, const string &eleFilename,
-            double scale, Vector3d startPos);
+            double& scale, Vector3d startPos);
     ~Cloth();
+    void buildCloth(const string& nodeFilename, const string& eleFilename,
+            double scale, Vector3d startPos);
     void generate_geometry(vector<glm::vec4>&,
         vector<glm::uvec3>&, vector<glm::vec4>&) const;
     void generate_libigl_geometry(MatrixX3d&, MatrixX3i&, VectorXd&) const;
