@@ -7,6 +7,7 @@ using namespace Eigen;
 
 class Collision {
 public:
+    bool clothCloth = true; /* the face will only be set if this is true */
     Vector3d x0, x1, x2, x3;
     int p0, p1, p2, p3;
     int fIndex;
@@ -15,6 +16,7 @@ public:
     Vector3d normal;
     double distance;
 
+    Collision() : clothCloth(false) {}
     Collision(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3,
             int p0, int p1, int p2, int p3) :
         x0(x0), x1(x1), x2(x2), x3(x3), p0(p0), p1(p1), p2(p2), p3(p3) {

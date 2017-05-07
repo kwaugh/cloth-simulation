@@ -28,9 +28,9 @@ void Cloth::buildCloth(const string& nodeFilename, const string& eleFilename,
     double a, b;
     for (int i = 0; i < numVerts; i++) {
         nodeIfs >> naeem >> a >> b >> naeem;
-        Pos(i, 0) = (a+1+startPos[0]) * scale / 2.0;
+        Pos(i, 0) = (a) * scale / 2.0 + startPos[0];
         Pos(i, 1) = startPos[2];
-        Pos(i, 2) = (b+1+startPos[1]) * scale / 2.0;
+        Pos(i, 2) = (b) * scale / 2.0 + startPos[1];
         V(i, 0) = a * scale / 2.0;
         V(i, 1) = b * scale / 2.0;
     }
@@ -170,7 +170,7 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
 void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     #pragma omp parallel for
     for (int i = 0; i < Pos.rows(); i++) {
-        if (i == 1 || i == 0) continue; // fixed verts
+        /* if (i == 1 || i == 0) continue; // fixed verts */
         Pos(i, 0) = q[3*i];
         Pos(i, 1) = q[3*i + 1];
         Pos(i, 2) = q[3*i + 2];

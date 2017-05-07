@@ -8,7 +8,7 @@
 #include <Eigen/Sparse>
 #include <glm/glm.hpp>
 #include "cloth.h"
-#include "sphere.h"
+#include "object.h"
 #include "collision.h"
 #include <memory>
 #include <mutex>
@@ -55,10 +55,11 @@ public:
 
     int runCount = 0;
     long long stepCount = 0;
+    int totalVertices = 0;
 
 private:
     shared_ptr<Cloth> g_cloth;
-    shared_ptr<Sphere> g_sphere;
+    vector<shared_ptr<Object>> objects;
     mutex lock;
     mutex& renderLock;
 };
