@@ -6,11 +6,10 @@
 class ViewerWrapper {
 
     public:
-	ViewerWrapper(Simulation *sim) : sim_(sim) { }
+        ViewerWrapper(Simulation *sim, mutex* renderLock) : sim_(sim), renderLock(renderLock) { }
 	void start(); 
     private:
 	Simulation *sim_;
-        mutex renderLock;
-
+        mutex* renderLock;
 }; 
 #endif

@@ -53,12 +53,14 @@ namespace {
         return false;
     }
 
-    bool pre_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
+    bool pre_draw(igl::viewer::Viewer& viewer, Simulation *sim, mutex* renderLock) {
         // Get the current mesh of the simulation.
         MatrixX3d V;
         MatrixX3i F;
         VectorXd C;
-        sim->generate_libigl_geometry(V, F, C);
+        renderLock->lock(); {
+            sim->generate_libigl_geometry(V, F, C);
+        } renderLock->unlock();
 
         // Update the viewer.
         viewer.data.clear();
@@ -79,15 +81,6 @@ namespace {
         return false;
     }
 
-    bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
-        if (!sim->paused) {
-            sim->takeSimulationStep();
-            sim->takeSimulationStep();
-            sim->takeSimulationStep();
-        }
-        return false;
-    }
-
 } // end anonymous namespace to handle LibIGL viewer.
 
 void ViewerWrapper::start() {
@@ -98,8 +91,7 @@ void ViewerWrapper::start() {
             placeholders::_3,
             sim_);
     viewer.callback_init = bind(init, placeholders::_1, sim_);
-    viewer.callback_pre_draw = bind(pre_draw, placeholders::_1, sim_);
-    viewer.callback_post_draw = bind(post_draw, placeholders::_1, sim_);
+    viewer.callback_pre_draw = bind(pre_draw, placeholders::_1, sim_, renderLock);
 
     viewer.launch();
 }

@@ -18,7 +18,7 @@ using namespace std;
 
 class Simulation {
 public:
-    Simulation();
+    Simulation(mutex& renderLock);
     ~Simulation();
     void takeSimulationStep();
     void numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev);
@@ -60,6 +60,7 @@ private:
     shared_ptr<Cloth> g_cloth;
     shared_ptr<Sphere> g_sphere;
     mutex lock;
+    mutex& renderLock;
 };
 
 #endif

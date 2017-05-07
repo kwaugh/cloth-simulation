@@ -15,7 +15,7 @@ using namespace std;
 using namespace glm;
 using namespace Eigen;
 
-Simulation::Simulation() {
+Simulation::Simulation(mutex& renderLock) : renderLock(renderLock) {
     reset();
 }
 
@@ -43,6 +43,8 @@ void Simulation::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces,
 }
 
 void Simulation::takeSimulationStep() {
+    if (paused) return;
+
     stepCount++;
     VectorXd q_cand, v_cand, qprev, vprev;
     g_cloth->buildConfiguration(q_cand, v_cand, qprev);
@@ -53,7 +55,9 @@ void Simulation::takeSimulationStep() {
     if (COLLISIONS)
         handleCollisions(q_cand, v_cand, qprev, vprev);
 
-    g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
+    renderLock.lock(); {
+        g_cloth->unpackConfiguration(q_cand, v_cand, qprev);
+    } renderLock.unlock();
     for (uint i = 0; i < q_cand.size(); i++) {
         if (std::isnan(q_cand[i])) {
             cout << "NaN" << endl;
