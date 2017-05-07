@@ -18,7 +18,7 @@ class Cloth {
 public:
     Cloth() {}
     Cloth(const string &nodeFilename, const string &eleFilename,
-            double& scale, Vector3d startPos);
+            double scale, Vector3d startPos);
     ~Cloth();
     void buildCloth(const string& nodeFilename, const string& eleFilename,
             double scale, Vector3d startPos);

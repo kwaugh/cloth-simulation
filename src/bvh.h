@@ -8,6 +8,7 @@
 #include "face.h"
 #include "collision.h"
 #include "cloth.h"
+#include <mutex>
 
 using namespace std;
 using namespace Eigen;
@@ -24,7 +25,7 @@ class BVHNode {
         BVHNode(vector<Face> faces, double clothThickness);
         ~BVHNode();
 
-        void intersect(Vector3d p, int pIndex, vector<Collision>& collisions);
+        void intersect(Vector3d p, int pIndex, vector<Collision>& collisions, mutex& lock);
 };
 
 #endif

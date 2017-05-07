@@ -86,11 +86,11 @@ BVHNode::~BVHNode() {
     }
 }
 
-void BVHNode::intersect(Vector3d p, int pIndex, vector<Collision>& collisions) {
+void BVHNode::intersect(Vector3d p, int pIndex, vector<Collision>& collisions, mutex& lock) {
     if (!aabb.contains(p)) return;
     if (!isLeaf) {
-	left->intersect(p, pIndex, collisions);
-	right->intersect(p, pIndex, collisions);
+	left->intersect(p, pIndex, collisions, lock);
+	right->intersect(p, pIndex, collisions, lock);
     } else {
         if (pIndex == face.i1 || pIndex == face.i2 || pIndex == face.i3) return;
 	Collision coll(
@@ -105,13 +105,10 @@ void BVHNode::intersect(Vector3d p, int pIndex, vector<Collision>& collisions) {
         );
 	coll.distance = pointPlaneDist(p, face.x1, face.x2, face.x3);
 	if (pointTriIntersection(coll) && coll.distance < clothThickness) {
-            /* cout << "found intersection" << endl; */
             coll.fIndex = face.index;
-	    collisions.push_back(coll);
-            if (!aabb.contains(p)) {
-                cout << "p: " << p << endl;
-                cout << "aabb.min(): " << aabb.min() << "  aabb.max(): " << aabb.max() << endl;
-            }
+            lock.lock(); {
+                collisions.push_back(coll);
+            } lock.unlock();
 	}
     }
 }

@@ -59,6 +59,7 @@ public:
 private:
     shared_ptr<Cloth> g_cloth;
     shared_ptr<Sphere> g_sphere;
+    mutex lock;
 };
 
 #endif

@@ -35,7 +35,7 @@ namespace {
         viewer.ngui->addVariable<bool>("Shear Force",          sim->F_SHEAR);
         viewer.ngui->addVariable<bool>("Bend Force",           sim->F_BEND);
         viewer.ngui->addVariable<bool>("Collisions",           sim->COLLISIONS);
-        viewer.ngui->addVariable<bool>("Vizualaize Collisions",sim->VIS_COLLISIONS);
+        viewer.ngui->addVariable<bool>("Visualize Collisions", sim->VIS_COLLISIONS);
         viewer.ngui->addVariable<int>("Cloth Version",         sim->vCloth);
         viewer.ngui->addVariable<double>("Cloth Scale",        sim->scale);
         viewer.ngui->addVariable<double>("Cloth Thickness",    sim->clothThickness);
@@ -80,8 +80,11 @@ namespace {
     }
 
     bool post_draw(igl::viewer::Viewer& viewer, Simulation *sim) {
-        if (!sim->paused)
+        if (!sim->paused) {
             sim->takeSimulationStep();
+            sim->takeSimulationStep();
+            sim->takeSimulationStep();
+        }
         return false;
     }
 

@@ -8,22 +8,8 @@ using namespace glm;
 using namespace Eigen;
 
 Cloth::Cloth(const string &nodeFilename, const string &eleFilename,
-        double& scale, Vector3d startPos) {
+        double scale, Vector3d startPos) {
     buildCloth(nodeFilename, eleFilename, scale, startPos);
-    /* calculate the surface area of the smallest face */
-    double smallestSA = 9999999.9;
-    for (int i = 0; i < F.rows(); i++) {
-        double sa = ((Pos.row(F(i, 1)) - Pos.row((F(i, 0))))
-                .cross(Pos.row((F(i, 2))) - Pos.row((F(i, 1))))).norm() / 2.0;
-        smallestSA = std::min(smallestSA, sa);
-    }
-    cout << "smallestSA: " << smallestSA << endl;
-    if (smallestSA < 12.5) { /* 12.5 seemed legit during test */
-        scale *= static_cast<int>(std::ceil(12.5 / smallestSA));
-        cout << "dynamically adjusting cloth scale for stability" << endl;
-        cout << "new scale: " << scale << endl;
-        buildCloth(nodeFilename, eleFilename, scale, startPos);
-    }
 }
 
 Cloth::~Cloth() { }
@@ -166,6 +152,7 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     q.resize(Pos.rows() * Pos.cols());
     v.resize(Pos.rows() * Pos.cols());
     qprev.resize(Pos.rows() * Pos.cols());
+    #pragma omp parallel for
     for (int i = 0; i < Pos.rows(); i++) {
         q[3*i] = Pos(i, 0);
         q[3*i + 1] = Pos(i, 1);
@@ -181,6 +168,7 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     }
 }
 void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
+    #pragma omp parallel for
     for (int i = 0; i < Pos.rows(); i++) {
         if (i == 1 || i == 0) continue; // fixed verts
         Pos(i, 0) = q[3*i];
