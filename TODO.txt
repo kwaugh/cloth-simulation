@@ -1,5 +1,3 @@
-- cloth/other object collisions
-    - apply inelastic impulse + penalty force?
 - friction
 - midstep collision handling
     - basically just keep handling the collisions in a loop until there are
