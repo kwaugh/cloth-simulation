@@ -35,7 +35,7 @@ Object::Object(const string &nodeFilename, const string &eleFilename,
     /* cout << "numFaces: " << numFaces << endl; */
     F.resize(numFaces, 3);
     int x, y, z;
-    cout << "offset: " << offset << endl;
+    /* cout << "offset: " << offset << endl; */
     for (int i = 0; i < numFaces; i++) {
         eleIfs >> x >> y >> z;
         F.row(i) = Vector3i(x + offset, y + offset, z + offset);
@@ -98,8 +98,8 @@ void Object::intersect(Vector3d p, int pIndex, vector<Collision>& collisions,
             }
             Collision c;
             c.distance = minDist;
-            c.normal = (V.row(F(index, 1) - offset) - V.row(F(index, 0) - offset))
-                 .cross(V.row(F(index, 2) - offset) - V.row(F(index, 1) - offset))
+            c.normal = (V.row(F(index, 2) - offset) - V.row(F(index, 0) - offset))
+                 .cross(V.row(F(index, 1) - offset) - V.row(F(index, 0) - offset))
                  .normalized();
             c.p0 = pIndex;
             c.x0 = p;

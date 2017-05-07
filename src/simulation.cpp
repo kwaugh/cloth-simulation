@@ -26,11 +26,11 @@ void Simulation::reset() {
             "../src/resources/cloth." + to_string(vCloth) + ".ele", scale, Vector3d(0, 0, 0));
     totalVertices += g_cloth->Pos.rows();
     objects.push_back(make_shared<Object>("../src/resources/sphere.node",
-            "../src/resources/sphere.ele", scale / 4.0, Vector3d(0, -scale, 0), totalVertices,
+            "../src/resources/sphere.ele", scale / 4.0, Vector3d(0, -2 * scale, 0), totalVertices,
             Object::ObjectType::Sphere));
     totalVertices += objects[objects.size() - 1]->V.rows();
     objects.push_back(make_shared<Object>("../src/resources/box.node",
-            "../src/resources/box.ele", scale / 4.0, Vector3d(0, -2 * scale, 0), totalVertices,
+            "../src/resources/box.ele", scale / 4.0, Vector3d(0, -scale, 0), totalVertices,
             Object::ObjectType::Box));
     totalVertices += objects[objects.size() - 1]->V.rows();
     paused = true;
