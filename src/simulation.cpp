@@ -3,8 +3,6 @@
 #include <math.h>
 #include <utility>
 #include <algorithm>
-#include "vec.h"
-#include "rootparitycollisiontest.h"
 #include <set>
 #include "bvh.h"
 #include <mutex>
@@ -704,10 +702,6 @@ const Vector3d Simulation::S_s(const Eigen::Vector3d &v, int index) {
 double Simulation::pointPlaneDist(Vector3d x0, Vector3d x1, Vector3d x2, Vector3d x3) {
     Vector3d unitNorm = (x2 - x1).cross(x3 - x1).normalized();
     return abs(unitNorm.dot(x0 - x1));
-}
-
-Vec3d convert(Vector3d v) {
-    return Vec3d(v[0], v[1], v[2]);
 }
 
 bool Simulation::pointTriIntersection(Collision& coll) {
