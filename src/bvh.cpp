@@ -103,6 +103,7 @@ void BVHNode::intersect(Vector3d p, int pIndex, vector<Collision>& collisions, m
             face.i2,
             face.i3
         );
+        if (pIndex == -1) coll.clothCloth = false;
 	coll.distance = pointPlaneDist(p, face.x1, face.x2, face.x3);
 	if (pointTriIntersection(coll) && coll.distance < clothThickness) {
             coll.fIndex = face.index;

@@ -157,6 +157,12 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
             objects[j]->intersect(Pos.row(i), i, collisions, lock, clothThickness);
         }
     }
+    #pragma omp parallel for
+    for (int i = 0; i < objects.size(); i++) {
+        for (int j = 0; j < objects[i]->V.rows(); j++) {
+            root.intersect(objects[i]->V.row(j), -1, collisions, lock);
+        }
+    }
     /* cout << "collisions.size(): " << collisions.size() << endl; */
 
     /* check for sphere/cube collisions */
@@ -172,17 +178,19 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     #pragma omp parallel for
     for (int i = 0; i < collisions.size(); i++) {
         Collision c = collisions[i];
+        Vector3d vel1(0, 0, 0);
+        Vector3d vel2(0, 0, 0);
+        if (c.clothCloth || c.p0 == -1) {
+            g_cloth->Colors[c.fIndex] += .01;
+            vel2 = c.a * vprev.segment<3>(3*c.p1) +
+                c.b * vprev.segment<3>(3*c.p2) +
+                c.c * vprev.segment<3>(3*c.p3);
+        }
+        if (c.clothCloth || c.p0 != -1) {
+            vel1 = vprev.segment<3>(3*c.p0);
+        }
         /* inelastic impulses */ {
-            Vector3d vel1 = vprev.segment<3>(3*c.p0);
-            Vector3d vel2(0, 0, 0);
-            if (c.clothCloth) {
-                g_cloth->Colors[c.fIndex] += .01;
-                vel2 = c.a * vprev.segment<3>(3*c.p1) +
-                    c.b * vprev.segment<3>(3*c.p2) +
-                    c.c * vprev.segment<3>(3*c.p3);
-            }
             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
-
             if (relvel > 0.0) {
                 double Idivm = relvel / (1 + c.a*c.a + c.b*c.b + c.c*c.c);
                 lock.lock(); {
@@ -196,30 +204,40 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
                         numImpulses[c.p2] += 1;
                         numImpulses[c.p3] += 1;
                     } else {
-                        v_diff_impulse.segment<3>(3*c.p0) += 2 * -Idivm * c.normal;
-                        numImpulses[c.p0] += 1;
+                        if (c.p0 != -1) {
+                            v_diff_impulse.segment<3>(3*c.p0) += 2 * -Idivm * c.normal;
+                            numImpulses[c.p0] += 1;
+                        } else {
+                            v_diff_impulse.segment<3>(3*c.p1) += 2 * c.a * Idivm * c.normal;
+                            v_diff_impulse.segment<3>(3*c.p2) += 2 * c.b * Idivm * c.normal;
+                            v_diff_impulse.segment<3>(3*c.p3) += 2 * c.c * Idivm * c.normal;
+                            numImpulses[c.p1] += 1;
+                            numImpulses[c.p2] += 1;
+                            numImpulses[c.p3] += 1;
+                        }
                     }
                 } lock.unlock();
             }
 
         }
         /* repulsion spring force */ {
-            Vector3d vel1 = vprev.segment<3>(3*c.p0);
-            Vector3d vel2(0, 0, 0);
-            if (c.clothCloth) {
-                vel2 = c.a * vprev.segment<3>(3*c.p1) +
-                    c.b * vprev.segment<3>(3*c.p2) +
-                    c.c * vprev.segment<3>(3*c.p3);
-            }
             double relvel = -(vel1.dot(c.normal) - vel2.dot(c.normal));
             double d = clothThickness - (c.x3 - c.a * c.x0 - c.b * c.x1 - c.c * c.x2).dot(c.normal);
             if (!(relvel >= 0.1 * d / timeStep)) {
-                double m1 = mass[c.p0];
-                double m2 = m1;
+                double m1, m2;
                 if (c.clothCloth) {
+                    m1 = mass[c.p0];
                     m2 = c.a * mass[c.p1] +
                          c.b * mass[c.p2] +
                          c.c * mass[c.p3];
+                } else {
+                    if (c.p0 != -1) {
+                        m1 = m2 = mass[c.p0];
+                    } else {
+                        m1 = m2 = c.a * mass[c.p1] +
+                            c.b * mass[c.p2] +
+                            c.c * mass[c.p3];
+                    }
                 }
                 double avgMass = (m1 + m2) / 2;
                 double Ir = -1 * std::min(
@@ -238,8 +256,19 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
                         numSpringForces[c.p2] += 1;
                         numSpringForces[c.p3] += 1;
                     } else {
-                        v_diff_spring.segment<3>(3*c.p0) -= 2 * -I / mass[c.p0] * c.normal;
-                        numSpringForces[c.p0] += 1;
+                        /* if (c.p0 != -1) { */
+                        /*     v_diff_spring.segment<3>(3*c.p0) -= -I / mass[c.p0] * c.normal; */
+                        /*     numSpringForces[c.p0] += 1; */
+                        /* } else { */
+                        /*     /1* cout << "applying repulsion force" << endl; *1/ */
+                        /*     /1* cout << "c.normal: " << c.normal << endl; *1/ */
+                        /*     v_diff_spring.segment<3>(3*c.p1) -= c.a * I / mass[c.p1] * c.normal; */
+                        /*     v_diff_spring.segment<3>(3*c.p2) -= c.b * I / mass[c.p2] * c.normal; */
+                        /*     v_diff_spring.segment<3>(3*c.p3) -= c.c * I / mass[c.p3] * c.normal; */
+                        /*     numSpringForces[c.p1] += 1; */
+                        /*     numSpringForces[c.p2] += 1; */
+                        /*     numSpringForces[c.p3] += 1; */
+                        /* } */
                     }
                 } lock.unlock();
 

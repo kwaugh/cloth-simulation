@@ -57,7 +57,6 @@ public:
     long long stepCount = 0;
     int totalVertices = 0;
 
-private:
     shared_ptr<Cloth> g_cloth;
     vector<shared_ptr<Object>> objects;
     mutex lock;

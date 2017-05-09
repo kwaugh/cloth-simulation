@@ -2,6 +2,7 @@
 #define COLLISION_H
 
 #include <Eigen/Core>
+#include <iostream>
 
 using namespace Eigen;
 
@@ -24,6 +25,24 @@ public:
             normal = Vector3d(0, 0, 0);
             distance = -1.0;
         }
+    friend std::ostream& operator<<(std::ostream &strm, const Collision &c) {
+        return strm << "clothCloth: " << c.clothCloth <<
+            "\n\tx0: " << c.x0 <<
+            "\n\tx1: " << c.x1 <<
+            "\n\tx2: " << c.x2 <<
+            "\n\tx3: " << c.x3 <<
+            "\n\tx3: " << c.x3 <<
+            "\n\tp0: " << c.p0 <<
+            "\n\tp1: " << c.p1 <<
+            "\n\tp2: " << c.p2 <<
+            "\n\tp3: " << c.p3 <<
+            "\n\tfIndex: " << c.fIndex <<
+            "\n\ta: " << c.a <<
+            "\n\tb: " << c.b <<
+            "\n\tc: " << c.c <<
+            "\n\tnormal: " << c.normal <<
+            "\n\tdistance: " << c.distance << std::endl;
+    }
 };
 
 #endif
