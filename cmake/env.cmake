@@ -6,7 +6,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 # Flags
-set(CMAKE_CXX_FLAGS "--std=c++11 -g")
+set(CMAKE_CXX_FLAGS "--std=c++11 -march=native -fopenmp")
 
 # Packages
 #OpenGL
