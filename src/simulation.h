@@ -49,7 +49,7 @@ public:
     bool VIS_COLLISIONS = false;
 
     bool paused     = false;
-    int vCloth      = 5;
+    int vCloth      = 2;
     double scale    = 20;
     double clothThickness = 0.01 * scale;
 

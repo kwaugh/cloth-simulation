@@ -15,6 +15,7 @@ using namespace Eigen;
 
 Simulation::Simulation(mutex& renderLock) : renderLock(renderLock) {
     reset();
+    paused = false;
 }
 
 void Simulation::reset() {
