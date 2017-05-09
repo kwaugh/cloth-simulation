@@ -33,6 +33,7 @@ void Simulation::reset() {
     totalVertices += objects[objects.size() - 1]->V.rows();
     paused = true;
     stepCount = 0;
+    timeStep = 0.003;
 }
 
 Simulation::~Simulation() {}
@@ -114,6 +115,12 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         solver.compute(df);
         VectorXd temp = solver.solve(f);
         guessQ -= temp;
+    }
+    if (i == 20) {
+        timeStep /= 2;
+        cout << "stepCount: " << stepCount << "  timeStep: " << timeStep << endl;
+        numericalIntegration(q, v, qprev);
+        return;
     }
     q = guessQ;
     F = computeForce(q);

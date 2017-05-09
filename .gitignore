@@ -4,3 +4,5 @@
 build
 *.vim
 third-party/
+report/*.aux
+report/*.log
