@@ -49,8 +49,8 @@ public:
     bool VIS_COLLISIONS = false;
 
     bool paused     = false;
-    int vCloth      = 5;
-    double scale    = 20;
+    int vCloth      = 1;
+    double scale    = 2000;
     double clothThickness = 0.01 * scale;
 
     int runCount = 0;

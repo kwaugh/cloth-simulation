@@ -21,14 +21,14 @@ void Simulation::reset() {
     totalVertices = 0;
     objects.clear();
     g_cloth = make_shared<Cloth>("../src/resources/cloth." + to_string(vCloth) + ".node",
-            "../src/resources/cloth." + to_string(vCloth) + ".ele", scale, Vector3d(0, 0, 0));
+            "../src/resources/cloth." + to_string(vCloth) + ".ele", 1.5 * scale, Vector3d(0, 0, 0));
     totalVertices += g_cloth->Pos.rows();
     objects.push_back(make_shared<Object>("../src/resources/sphere.node",
-            "../src/resources/sphere.ele", scale / 4.0, Vector3d(0, -scale, 0), totalVertices,
+            "../src/resources/sphere.ele", scale / 4.0, Vector3d(0, -2 * scale, 0), totalVertices,
             Object::ObjectType::Sphere));
     totalVertices += objects[objects.size() - 1]->V.rows();
     objects.push_back(make_shared<Object>("../src/resources/box.node",
-            "../src/resources/box.ele", scale / 4.0, Vector3d(0, -2 * scale, 0), totalVertices,
+            "../src/resources/box.ele", scale / 4.0, Vector3d(0, -scale / 3, 0), totalVertices,
             Object::ObjectType::Box));
     totalVertices += objects[objects.size() - 1]->V.rows();
     paused = true;
@@ -117,7 +117,7 @@ void Simulation::numericalIntegration(VectorXd &q, VectorXd &v, VectorXd &qprev)
         guessQ -= temp;
     }
     if (i == 20) {
-        timeStep /= 2;
+        timeStep /= 4;
         cout << "stepCount: " << stepCount << "  timeStep: " << timeStep << endl;
         numericalIntegration(q, v, qprev);
         return;
