@@ -2,7 +2,7 @@ Scenes
 - cloth held by two opposite corners
 - cloth held by two adjacent corners
 - held by centerpoint
-- cloth onto sphere
+x cloth onto sphere
 - cloth onto box
 - cloth between two boxes
 - cloth hitting another cloth
