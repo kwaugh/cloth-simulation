@@ -14,6 +14,7 @@ using namespace glm;
 using namespace Eigen;
 
 Simulation::Simulation(mutex& renderLock) : renderLock(renderLock) {
+    threadCount = std::max(std::thread::hardware_concurrency(), (unsigned)1);
     reset();
 }
 
@@ -295,10 +296,72 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
 }
 
 VectorXd Simulation::computeForce(VectorXd q) {
+    thread t[threadCount];
+    vector<VectorXd> stretch(threadCount);
+    vector<VectorXd> shear(threadCount);
+    vector<VectorXd> bend(threadCount);
+    vector<VectorXd> gravity(threadCount);
+    for (int i = 0; i < threadCount; i++) {
+        if (i == threadCount - 1) {
+            t[i] = std::thread(
+                &Simulation::computeForceHelper,
+                this,
+                (int)q.size(),
+                (g_cloth->F.rows() / threadCount) * i,
+                g_cloth->F.rows(),
+                stretch[i],
+                shear[i],
+                bend[i],
+                gravity[i]
+            );
+        } else {
+            t[i] = std::thread(
+                &Simulation::computeForceHelper,
+                this,
+                (int)q.size(),
+                (int)((g_cloth->F.rows() / threadCount) * i),
+                (int)((g_cloth->F.rows() / threadCount) * (i+1)),
+                stretch[i],
+                shear[i],
+                bend[i],
+                gravity[i]
+            );
+        }
+    }
+    for (int i = 0; i < threadCount; i++) {
+        if (t[i].joinable()) {
+            t[i].join();
+        } 
+    }
     VectorXd Force_Stretch(q.size());
     VectorXd Force_Shear(q.size());
     VectorXd Force_Bend(q.size());
     VectorXd Force_Gravity(q.size());
+    Force_Stretch.setZero();
+    Force_Shear.setZero();
+    Force_Bend.setZero();
+    Force_Gravity.setZero();
+    for (int i = 0; i < threadCount; i++) {
+        Force_Stretch += stretch[i];
+        Force_Shear += shear[i];
+        Force_Bend += bend[i];
+        Force_Gravity += gravity[i];
+    }
+    return Force_Stretch + Force_Shear + Force_Bend + Force_Gravity;
+}
+
+void Simulation::computeForceHelper(
+        int numPoints,
+        int startRow,
+        int endRow,
+        VectorXd& Force_Stretch,
+        VectorXd& Force_Shear,
+        VectorXd& Force_Bend,
+        VectorXd& Force_Gravity) {
+    Force_Stretch.resize(numPoints);
+    Force_Shear.resize(numPoints);
+    Force_Bend.resize(numPoints);
+    Force_Gravity.resize(numPoints);
 
     Force_Stretch.setZero();
     Force_Shear.setZero();
@@ -309,8 +372,7 @@ VectorXd Simulation::computeForce(VectorXd q) {
     auto F = g_cloth->F;
     auto V = g_cloth->V;
     auto Pos = g_cloth->Pos;
-    #pragma omp parallel for
-    for (int i = 0; i < F.rows(); i++) {
+    for (int i = startRow; i < endRow; i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
         Vector3d x1 = g_cloth->Pos.row(F(i, 1));
         Vector3d x2 = g_cloth->Pos.row(F(i, 2));
@@ -344,14 +406,12 @@ VectorXd Simulation::computeForce(VectorXd q) {
             Vector3d dCvdx1 = alpha * dwdxx(1, 1) * w_v.normalized();
             Vector3d dCvdx2 = alpha * dwdxx(1, 2) * w_v.normalized();
 
-            lock.lock(); {
-                Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
-                Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
-                Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
-                Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
-                Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
-                Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
-            } lock.unlock();
+            Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
+            Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
+            Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
+            Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
+            Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
+            Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
         }
         if (F_SHEAR) {
             double C = alpha * w_u.dot(w_v);
@@ -371,11 +431,9 @@ VectorXd Simulation::computeForce(VectorXd q) {
                     alpha * (dwdxx(0, 2) * w_v[2] + dwdxx(1, 2) * w_u[2])
                     );
 
-            lock.lock(); {
-                Force_Shear.segment<3>(3 * F(i, 0)) += -g_cloth->kshear * dCdx0 * C;
-                Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
-                Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
-            } lock.unlock();
+            Force_Shear.segment<3>(3 * F(i, 0)) += -g_cloth->kshear * dCdx0 * C;
+            Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
+            Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
         }
         if (F_BEND) {
             for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
@@ -447,22 +505,17 @@ VectorXd Simulation::computeForce(VectorXd q) {
                             + (nA.normalized().cross(nB.normalized()).dot(dehatdxms));
                         dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms;
                     }
-                    lock.lock(); {
-                        Force_Bend.segment<3>(3 * particleIdx[m]) += -g_cloth->kbend
-                            * dCdxm * C;
-                    } lock.unlock();
+                    Force_Bend.segment<3>(3 * particleIdx[m]) += -g_cloth->kbend
+                        * dCdxm * C;
                 }
             }
         }
     }
     if (F_GRAV) {
-        #pragma omp parallel for
-        for (int i = 1; i < q.size(); i+=3) {
+        for (int i = 1; i < numPoints; i+=3) {
             Force_Gravity[i] += -grav * massVec[i / 3];
         }
     }
-
-    return Force_Gravity + Force_Stretch + Force_Shear + Force_Bend;
 }
 
 MatrixXd Simulation::computeDF(VectorXd q) {
@@ -477,7 +530,7 @@ MatrixXd Simulation::computeDF(VectorXd q) {
     auto F = g_cloth->F;
     auto V = g_cloth->V;
     auto Pos = g_cloth->Pos;
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < F.rows(); i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
         Vector3d x1 = g_cloth->Pos.row(F(i, 1));

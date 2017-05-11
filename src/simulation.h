@@ -12,6 +12,7 @@
 #include "collision.h"
 #include <memory>
 #include <mutex>
+#include <thread>
 
 using namespace Eigen;
 using namespace std;
@@ -26,6 +27,15 @@ public:
         vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
     void generate_libigl_geometry(MatrixX3d&, MatrixX3i&, VectorXd&) const;
     VectorXd computeForce(VectorXd q);
+    void computeForceHelper(
+        int numPoints,
+        int startRow,
+        int endRow,
+        VectorXd& Force_Stretch,
+        VectorXd& Force_Shear,
+        VectorXd& Force_Bend,
+        VectorXd& Force_Gravity
+    );
     MatrixXd computeDF(VectorXd q);
     void handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev,
             VectorXd& vprev);
@@ -61,6 +71,7 @@ public:
     vector<shared_ptr<Object>> objects;
     mutex lock;
     mutex& renderLock;
+    int threadCount;
 };
 
 #endif
