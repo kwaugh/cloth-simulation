@@ -4,7 +4,6 @@
 #include <utility>
 #include <algorithm>
 #include <set>
-#include "bvh.h"
 #include <mutex>
 
 #define BICBOI BiCGSTAB
@@ -14,6 +13,9 @@ using namespace glm;
 using namespace Eigen;
 
 Simulation::Simulation(mutex& renderLock) : renderLock(renderLock) {
+    threadCount = std::max(std::thread::hardware_concurrency(), (unsigned)1);
+    threadCount = std::min(threadCount, 10); // don't use hyperthreads
+    cout << "threadCount: " << threadCount << endl;
     reset();
 }
 
@@ -59,7 +61,7 @@ void Simulation::takeSimulationStep() {
     if (paused) return;
 
     stepCount++;
-    /* cout << "stepCount: " << stepCount << endl; */
+    // cout << "stepCount: " << stepCount << endl;
     VectorXd q_cand, v_cand, qprev, vprev;
     g_cloth->buildConfiguration(q_cand, v_cand, qprev);
     vprev = v_cand;
@@ -137,7 +139,6 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
 
     vector<Collision> collisions;
     vector<Face> faces(F.rows());
-    #pragma omp parallel for
     for (int i = 0; i < F.rows(); i++) {
         faces[i] = (Face(
             Pos.row(F(i, 0)),
@@ -150,17 +151,11 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
         ));
     }
     BVHNode root(faces, clothThickness);
-    #pragma omp parallel for
-    for (int i = 0; i < Pos.rows(); i++) {
-        root.intersect(Pos.row(i), i, collisions, lock);
-        for (int j = 0; j < objects.size(); j++) {
-            objects[j]->intersect(Pos.row(i), i, collisions, lock, clothThickness);
-        }
-    }
-    #pragma omp parallel for
+    clothClothCollision(collisions, &root);
+    /* cloth-object collisions */
     for (int i = 0; i < objects.size(); i++) {
         for (int j = 0; j < objects[i]->V.rows(); j++) {
-            root.intersect(objects[i]->V.row(j), -1, collisions, lock);
+            root.intersect(objects[i]->V.row(j), -1, &collisions);
         }
     }
     /* cout << "collisions.size(): " << collisions.size() << endl; */
@@ -175,7 +170,6 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     v_diff_spring.setZero();
     numImpulses.setZero();
     numSpringForces.setZero();
-    #pragma omp parallel for
     for (int i = 0; i < collisions.size(); i++) {
         Collision c = collisions[i];
         Vector3d vel1(0, 0, 0);
@@ -193,30 +187,28 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
             double relvel = vel1.dot(c.normal) - vel2.dot(c.normal);
             if (relvel > 0.0) {
                 double Idivm = relvel / (1 + c.a*c.a + c.b*c.b + c.c*c.c);
-                lock.lock(); {
-                    if (c.clothCloth) {
-                        v_diff_impulse.segment<3>(3*c.p0) += -Idivm * c.normal;
-                        v_diff_impulse.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
-                        v_diff_impulse.segment<3>(3*c.p2) += c.b * Idivm * c.normal;
-                        v_diff_impulse.segment<3>(3*c.p3) += c.c * Idivm * c.normal;
+                if (c.clothCloth) {
+                    v_diff_impulse.segment<3>(3*c.p0) += -Idivm * c.normal;
+                    v_diff_impulse.segment<3>(3*c.p1) += c.a * Idivm * c.normal;
+                    v_diff_impulse.segment<3>(3*c.p2) += c.b * Idivm * c.normal;
+                    v_diff_impulse.segment<3>(3*c.p3) += c.c * Idivm * c.normal;
+                    numImpulses[c.p0] += 1;
+                    numImpulses[c.p1] += 1;
+                    numImpulses[c.p2] += 1;
+                    numImpulses[c.p3] += 1;
+                } else {
+                    if (c.p0 != -1) {
+                        v_diff_impulse.segment<3>(3*c.p0) += 2 * -Idivm * c.normal;
                         numImpulses[c.p0] += 1;
+                    } else {
+                        v_diff_impulse.segment<3>(3*c.p1) += 2 * c.a * Idivm * c.normal;
+                        v_diff_impulse.segment<3>(3*c.p2) += 2 * c.b * Idivm * c.normal;
+                        v_diff_impulse.segment<3>(3*c.p3) += 2 * c.c * Idivm * c.normal;
                         numImpulses[c.p1] += 1;
                         numImpulses[c.p2] += 1;
                         numImpulses[c.p3] += 1;
-                    } else {
-                        if (c.p0 != -1) {
-                            v_diff_impulse.segment<3>(3*c.p0) += 2 * -Idivm * c.normal;
-                            numImpulses[c.p0] += 1;
-                        } else {
-                            v_diff_impulse.segment<3>(3*c.p1) += 2 * c.a * Idivm * c.normal;
-                            v_diff_impulse.segment<3>(3*c.p2) += 2 * c.b * Idivm * c.normal;
-                            v_diff_impulse.segment<3>(3*c.p3) += 2 * c.c * Idivm * c.normal;
-                            numImpulses[c.p1] += 1;
-                            numImpulses[c.p2] += 1;
-                            numImpulses[c.p3] += 1;
-                        }
                     }
-                } lock.unlock();
+                }
             }
 
         }
@@ -245,33 +237,30 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
                         avgMass * (.1 * d / timeStep - relvel)
                         );
                 double I = 2 * Ir / (1 + c.a*c.a + c.b*c.b + c.c*c.c);
-                lock.lock(); {
-                    if (c.clothCloth) {
-                        v_diff_spring.segment<3>(3*c.p0) -= -I / mass[c.p0] * c.normal;
-                        v_diff_spring.segment<3>(3*c.p1) -= c.a * I / mass[c.p1] * c.normal;
-                        v_diff_spring.segment<3>(3*c.p2) -= c.b * I / mass[c.p2] * c.normal;
-                        v_diff_spring.segment<3>(3*c.p3) -= c.c * I / mass[c.p3] * c.normal;
-                        numSpringForces[c.p0] += 1;
-                        numSpringForces[c.p1] += 1;
-                        numSpringForces[c.p2] += 1;
-                        numSpringForces[c.p3] += 1;
-                    } else {
-                        /* if (c.p0 != -1) { */
-                        /*     v_diff_spring.segment<3>(3*c.p0) -= -I / mass[c.p0] * c.normal; */
-                        /*     numSpringForces[c.p0] += 1; */
-                        /* } else { */
-                        /*     /1* cout << "applying repulsion force" << endl; *1/ */
-                        /*     /1* cout << "c.normal: " << c.normal << endl; *1/ */
-                        /*     v_diff_spring.segment<3>(3*c.p1) -= c.a * I / mass[c.p1] * c.normal; */
-                        /*     v_diff_spring.segment<3>(3*c.p2) -= c.b * I / mass[c.p2] * c.normal; */
-                        /*     v_diff_spring.segment<3>(3*c.p3) -= c.c * I / mass[c.p3] * c.normal; */
-                        /*     numSpringForces[c.p1] += 1; */
-                        /*     numSpringForces[c.p2] += 1; */
-                        /*     numSpringForces[c.p3] += 1; */
-                        /* } */
-                    }
-                } lock.unlock();
-
+                if (c.clothCloth) {
+                    v_diff_spring.segment<3>(3*c.p0) -= -I / mass[c.p0] * c.normal;
+                    v_diff_spring.segment<3>(3*c.p1) -= c.a * I / mass[c.p1] * c.normal;
+                    v_diff_spring.segment<3>(3*c.p2) -= c.b * I / mass[c.p2] * c.normal;
+                    v_diff_spring.segment<3>(3*c.p3) -= c.c * I / mass[c.p3] * c.normal;
+                    numSpringForces[c.p0] += 1;
+                    numSpringForces[c.p1] += 1;
+                    numSpringForces[c.p2] += 1;
+                    numSpringForces[c.p3] += 1;
+                } else {
+                    /* if (c.p0 != -1) { */
+                    /*     v_diff_spring.segment<3>(3*c.p0) -= -I / mass[c.p0] * c.normal; */
+                    /*     numSpringForces[c.p0] += 1; */
+                    /* } else { */
+                    /*     /1* cout << "applying repulsion force" << endl; *1/ */
+                    /*     /1* cout << "c.normal: " << c.normal << endl; *1/ */
+                    /*     v_diff_spring.segment<3>(3*c.p1) -= c.a * I / mass[c.p1] * c.normal; */
+                    /*     v_diff_spring.segment<3>(3*c.p2) -= c.b * I / mass[c.p2] * c.normal; */
+                    /*     v_diff_spring.segment<3>(3*c.p3) -= c.c * I / mass[c.p3] * c.normal; */
+                    /*     numSpringForces[c.p1] += 1; */
+                    /*     numSpringForces[c.p2] += 1; */
+                    /*     numSpringForces[c.p3] += 1; */
+                    /* } */
+                }
             }
         }
     }
@@ -294,23 +283,112 @@ void Simulation::handleCollisions(VectorXd& q_cand, VectorXd& v_cand,
     }
 }
 
+void Simulation::clothClothCollision(vector<Collision>& collisions, BVHNode *root) {
+    thread t[threadCount];
+    vector<vector<Collision>> threadCollisions(threadCount);
+    for (int i = 0; i < threadCount; i++) {
+        int end = i == (threadCount - 1) ?
+            (int)(g_cloth->Pos.rows()) :
+            (int)(g_cloth->Pos.rows() / threadCount) * (i+1);
+        t[i] = std::thread(
+            &Simulation::clothClothCollisionHelper,
+            this,
+            (int)((g_cloth->Pos.rows() / threadCount) * i),
+            end,
+            root,
+            &(threadCollisions[i])
+        );
+    }
+    for (int i = 0; i < threadCount; i++) {
+        t[i].join();
+    }
+    for (int i = 0; i < threadCount; i++) {
+        collisions.insert(
+            collisions.end(),
+            threadCollisions[i].begin(),
+            threadCollisions[i].end()
+        );
+    }
+}
+
+void Simulation::clothClothCollisionHelper(
+        int startRow,
+        int endRow,
+        BVHNode* root,
+        vector<Collision>* collisions) {
+    for (int i = startRow; i < endRow; i++) {
+        root->intersect(g_cloth->Pos.row(i), i, collisions);
+        for (int j = 0; j < objects.size(); j++) {
+            objects[j]->intersect(g_cloth->Pos.row(i), i, collisions, clothThickness);
+        }
+    }
+}
+
 VectorXd Simulation::computeForce(VectorXd q) {
+    thread t[threadCount];
+    vector<VectorXd> stretch(threadCount);
+    vector<VectorXd> shear(threadCount);
+    vector<VectorXd> bend(threadCount);
+    for (int i = 0; i < threadCount; i++) {
+        int end = i == (threadCount - 1) ?
+            (int)(g_cloth->F.rows()) :
+            (int)(g_cloth->F.rows() / threadCount) * (i+1);
+        t[i] = std::thread(
+            &Simulation::computeForceHelper,
+            this,
+            (int)q.size(),
+            (int)((g_cloth->F.rows() / threadCount) * i),
+            end,
+            &stretch[i],
+            &shear[i],
+            &bend[i]
+        );
+    }
     VectorXd Force_Stretch(q.size());
     VectorXd Force_Shear(q.size());
     VectorXd Force_Bend(q.size());
     VectorXd Force_Gravity(q.size());
-
     Force_Stretch.setZero();
     Force_Shear.setZero();
     Force_Bend.setZero();
     Force_Gravity.setZero();
+    /* compute gravity while we wait for other threads to fiinish */
+    if (F_GRAV) {
+        VectorXd massVec = g_cloth->getMassVector();
+        for (int i = 1; i < q.size(); i+=3) {
+            Force_Gravity[i] += -grav * massVec[i / 3];
+        }
+    }
+    for (int i = 0; i < threadCount; i++) {
+        t[i].join();
+    }
+    for (int i = 0; i < threadCount; i++) {
+        Force_Stretch += stretch[i];
+        Force_Shear += shear[i];
+        Force_Bend += bend[i];
+    }
+    return Force_Stretch + Force_Shear + Force_Bend + Force_Gravity;
+}
 
-    VectorXd massVec = g_cloth->getMassVector();
+void Simulation::computeForceHelper(
+        int numPoints,
+        int startRow,
+        int endRow,
+        VectorXd* Force_Stretch,
+        VectorXd* Force_Shear,
+        VectorXd* Force_Bend) const {
+    Force_Stretch->resize(numPoints);
+    Force_Shear->resize(numPoints);
+    Force_Bend->resize(numPoints);
+
+    Force_Stretch->setZero();
+    Force_Shear->setZero();
+    Force_Bend->setZero();
+
     auto F = g_cloth->F;
     auto V = g_cloth->V;
     auto Pos = g_cloth->Pos;
-    #pragma omp parallel for
-    for (int i = 0; i < F.rows(); i++) {
+    for (int i = startRow; i < endRow; i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
         Vector3d x1 = g_cloth->Pos.row(F(i, 1));
         Vector3d x2 = g_cloth->Pos.row(F(i, 2));
@@ -344,14 +422,12 @@ VectorXd Simulation::computeForce(VectorXd q) {
             Vector3d dCvdx1 = alpha * dwdxx(1, 1) * w_v.normalized();
             Vector3d dCvdx2 = alpha * dwdxx(1, 2) * w_v.normalized();
 
-            lock.lock(); {
-                Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
-                Force_Stretch.segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
-                Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
-                Force_Stretch.segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
-                Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
-                Force_Stretch.segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
-            } lock.unlock();
+            Force_Stretch->segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCudx0 * C[0];
+            Force_Stretch->segment<3>(3 * F(i, 0)) += -g_cloth->kstretch * dCvdx0 * C[1];
+            Force_Stretch->segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCudx1 * C[0];
+            Force_Stretch->segment<3>(3 * F(i, 1)) += -g_cloth->kstretch * dCvdx1 * C[1];
+            Force_Stretch->segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCudx2 * C[0];
+            Force_Stretch->segment<3>(3 * F(i, 2)) += -g_cloth->kstretch * dCvdx2 * C[1];
         }
         if (F_SHEAR) {
             double C = alpha * w_u.dot(w_v);
@@ -371,11 +447,9 @@ VectorXd Simulation::computeForce(VectorXd q) {
                     alpha * (dwdxx(0, 2) * w_v[2] + dwdxx(1, 2) * w_u[2])
                     );
 
-            lock.lock(); {
-                Force_Shear.segment<3>(3 * F(i, 0)) += -g_cloth->kshear * dCdx0 * C;
-                Force_Shear.segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
-                Force_Shear.segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
-            } lock.unlock();
+            Force_Shear->segment<3>(3 * F(i, 0)) += -g_cloth->kshear * dCdx0 * C;
+            Force_Shear->segment<3>(3 * F(i, 1)) += -g_cloth->kshear * dCdx1 * C;
+            Force_Shear->segment<3>(3 * F(i, 2)) += -g_cloth->kshear * dCdx2 * C;
         }
         if (F_BEND) {
             for (uint j = 0; j < g_cloth->adjacentFaces[i].size(); j++) {
@@ -447,38 +521,71 @@ VectorXd Simulation::computeForce(VectorXd q) {
                             + (nA.normalized().cross(nB.normalized()).dot(dehatdxms));
                         dCdxm[s] = cosT * dsinTdxms - sinT * dcosTdxms;
                     }
-                    lock.lock(); {
-                        Force_Bend.segment<3>(3 * particleIdx[m]) += -g_cloth->kbend
-                            * dCdxm * C;
-                    } lock.unlock();
+                    Force_Bend->segment<3>(3 * particleIdx[m]) += -g_cloth->kbend
+                        * dCdxm * C;
                 }
             }
         }
     }
-    if (F_GRAV) {
-        #pragma omp parallel for
-        for (int i = 1; i < q.size(); i+=3) {
-            Force_Gravity[i] += -grav * massVec[i / 3];
-        }
-    }
-
-    return Force_Gravity + Force_Stretch + Force_Shear + Force_Bend;
 }
 
 MatrixXd Simulation::computeDF(VectorXd q) {
+    thread t[threadCount];
+    vector<MatrixXd> stretch(threadCount);
+    vector<MatrixXd> shear(threadCount);
+    vector<MatrixXd> bend(threadCount);
+    for (int i = 0; i < threadCount; i++) {
+        int end = i == (threadCount - 1) ?
+            (int)(g_cloth->F.rows()) :
+            (int)(g_cloth->F.rows() / threadCount) * (i+1);
+        t[i] = std::thread(
+            &Simulation::computeDFHelper,
+            this,
+            (int)q.size(),
+            (int)((g_cloth->F.rows() / threadCount) * i),
+            end,
+            &stretch[i],
+            &shear[i],
+            &bend[i]
+        );
+    }
+    for (int i = 0; i < threadCount; i++) {
+        t[i].join();
+    }
     MatrixXd df_stretch(q.size(), q.size());
     MatrixXd df_shear(q.size(), q.size());
     MatrixXd df_bend(q.size(), q.size());
-
     df_stretch.setZero();
     df_shear.setZero();
     df_bend.setZero();
+    for (int i = 0; i < threadCount; i++) {
+        df_stretch += stretch[i];
+        df_shear += shear[i];
+        df_bend += bend[i];
+    }
+    return df_stretch + df_shear + df_bend;
+}
+
+void Simulation::computeDFHelper(
+        int numPoints,
+        int startRow,
+        int endRow,
+        MatrixXd* df_stretch,
+        MatrixXd* df_shear,
+        MatrixXd* df_bend
+        ) const {
+    df_stretch->resize(numPoints, numPoints);
+    df_shear->resize(numPoints, numPoints);
+    df_bend->resize(numPoints, numPoints);
+
+    df_stretch->setZero();
+    df_shear->setZero();
+    df_bend->setZero();
 
     auto F = g_cloth->F;
     auto V = g_cloth->V;
     auto Pos = g_cloth->Pos;
-    #pragma omp parallel for
-    for (int i = 0; i < F.rows(); i++) {
+    for (int i = startRow; i < endRow; i++) {
         Vector3d x0 = g_cloth->Pos.row(F(i, 0));
         Vector3d x1 = g_cloth->Pos.row(F(i, 1));
         Vector3d x2 = g_cloth->Pos.row(F(i, 2));
@@ -520,14 +627,12 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                     MatrixX3d d2Cudxmn = alpha / w_u.norm() * dwdxx(0, m)* dwdxx(0, n)
                         * (MatrixXd::Identity(3, 3) - w_u.normalized()*w_u.normalized().transpose());
                     MatrixX3d d2Cvdxmn = alpha / w_v.norm() * dwdxx(1, m)* dwdxx(1, n)
-                        * (MatrixXd::Identity(3, 3) - w_v.normalized()*w_v.normalized().transpose()); 
+                        * (MatrixXd::Identity(3, 3) - w_v.normalized()*w_v.normalized().transpose());
 
-                    lock.lock(); {
-                        df_stretch.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
-                            * (dCudx.row(m).transpose() * dCudx.row(n) + d2Cudxmn * C[0]);
-                        df_stretch.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
-                            * (dCvdx.row(m).transpose() * dCvdx.row(n) + d2Cvdxmn * C[1]);
-                    } lock.unlock();
+                    df_stretch->block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
+                        * (dCudx.row(m).transpose() * dCudx.row(n) + d2Cudxmn * C[0]);
+                    df_stretch->block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kstretch
+                        * (dCvdx.row(m).transpose() * dCvdx.row(n) + d2Cvdxmn * C[1]);
                 }
             }
         }
@@ -554,10 +659,8 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                     double stretchedD = alpha *
                         (dwdxx(0, m) * dwdxx(1, n) + dwdxx(0, n) * dwdxx(1, m));
                     MatrixX3d d2Cdxmn = MatrixXd::Identity(3, 3) * stretchedD;
-                    lock.lock(); {
-                        df_shear.block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kshear
-                            * (dCdx.row(m).transpose() * dCdx.row(n) + d2Cdxmn * C);
-                    } lock.unlock();
+                    df_shear->block<3, 3>(F(i, m) * 3, F(i, n) * 3) += -g_cloth->kshear
+                        * (dCdx.row(m).transpose() * dCdx.row(n) + d2Cdxmn * C);
                 }
             }
         }
@@ -711,17 +814,13 @@ MatrixXd Simulation::computeDF(VectorXd q) {
                                 d2Cdxmn(t, s) = d2Cdxmn(s, t);
                             }
                         }
-                        lock.lock(); {
-                            df_bend.block<3, 3>(particleIdx[m] * 3, particleIdx[n] * 3) +=
-                                -g_cloth->kbend * (dCdxm * dCdxn.transpose() + d2Cdxmn * C);
-                        } lock.unlock();
+                        df_bend->block<3, 3>(particleIdx[m] * 3, particleIdx[n] * 3) +=
+                            -g_cloth->kbend * (dCdxm * dCdxn.transpose() + d2Cdxmn * C);
                     }
                 }
             }
         }
     }
-
-    return df_stretch + df_shear + df_bend;
 }
 
 const Matrix3d Simulation::S(const Eigen::Vector3d &v) {
