@@ -298,9 +298,13 @@ void Simulation::clothClothCollision(vector<Collision>& collisions, BVHNode *roo
             &(threadCollisions[i])
         );
     }
-    for (int i = 0; i < threadCount; i++) {
-        if (t[i].joinable()) {
-            t[i].join();
+    int doneThreads = 0;
+    while (doneThreads != threadCount) {
+        for (int i = 0; i < threadCount; i++) {
+            if (t[i].joinable()) {
+                t[i].join();
+                doneThreads++;
+            }
         }
     }
     for (int i = 0; i < threadCount; i++) {
@@ -347,9 +351,13 @@ VectorXd Simulation::computeForce(VectorXd q) {
             &gravity[i]
         );
     }
-    for (int i = 0; i < threadCount; i++) {
-        if (t[i].joinable()) {
-            t[i].join();
+    int doneThreads = 0;
+    while (doneThreads != threadCount) {
+        for (int i = 0; i < threadCount; i++) {
+            if (t[i].joinable()) {
+                t[i].join();
+                doneThreads++;
+            }
         }
     }
     VectorXd Force_Stretch(q.size());
@@ -557,9 +565,13 @@ MatrixXd Simulation::computeDF(VectorXd q) {
             &bend[i]
         );
     }
-    for (int i = 0; i < threadCount; i++) {
-        if (t[i].joinable()) {
-            t[i].join();
+    int doneThreads = 0;
+    while (doneThreads != threadCount) {
+        for (int i = 0; i < threadCount; i++) {
+            if (t[i].joinable()) {
+                t[i].join();
+                doneThreads++;
+            }
         }
     }
     MatrixXd df_stretch(q.size(), q.size());
