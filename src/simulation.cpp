@@ -60,7 +60,7 @@ void Simulation::takeSimulationStep() {
     if (paused) return;
 
     stepCount++;
-    /* cout << "stepCount: " << stepCount << endl; */
+    // cout << "stepCount: " << stepCount << endl;
     VectorXd q_cand, v_cand, qprev, vprev;
     g_cloth->buildConfiguration(q_cand, v_cand, qprev);
     vprev = v_cand;
@@ -298,14 +298,8 @@ void Simulation::clothClothCollision(vector<Collision>& collisions, BVHNode *roo
             &(threadCollisions[i])
         );
     }
-    int doneThreads = 0;
-    while (doneThreads != threadCount) {
-        for (int i = 0; i < threadCount; i++) {
-            if (t[i].joinable()) {
-                t[i].join();
-                doneThreads++;
-            }
-        }
+    for (int i = 0; i < threadCount; i++) {
+        t[i].join();
     }
     for (int i = 0; i < threadCount; i++) {
         collisions.insert(
@@ -334,11 +328,10 @@ VectorXd Simulation::computeForce(VectorXd q) {
     vector<VectorXd> stretch(threadCount);
     vector<VectorXd> shear(threadCount);
     vector<VectorXd> bend(threadCount);
-    vector<VectorXd> gravity(threadCount);
     for (int i = 0; i < threadCount; i++) {
         int end = i == (threadCount - 1) ?
-        (int)(g_cloth->F.rows()) :
-        (int)(g_cloth->F.rows() / threadCount) * (i+1);
+            (int)(g_cloth->F.rows()) :
+            (int)(g_cloth->F.rows() / threadCount) * (i+1);
         t[i] = std::thread(
             &Simulation::computeForceHelper,
             this,
@@ -347,18 +340,8 @@ VectorXd Simulation::computeForce(VectorXd q) {
             end,
             &stretch[i],
             &shear[i],
-            &bend[i],
-            &gravity[i]
+            &bend[i]
         );
-    }
-    int doneThreads = 0;
-    while (doneThreads != threadCount) {
-        for (int i = 0; i < threadCount; i++) {
-            if (t[i].joinable()) {
-                t[i].join();
-                doneThreads++;
-            }
-        }
     }
     VectorXd Force_Stretch(q.size());
     VectorXd Force_Shear(q.size());
@@ -368,11 +351,20 @@ VectorXd Simulation::computeForce(VectorXd q) {
     Force_Shear.setZero();
     Force_Bend.setZero();
     Force_Gravity.setZero();
+    /* compute gravity while we wait for other threads to fiinish */
+    if (F_GRAV) {
+        VectorXd massVec = g_cloth->getMassVector();
+        for (int i = 1; i < q.size(); i+=3) {
+            Force_Gravity[i] += -grav * massVec[i / 3];
+        }
+    }
+    for (int i = 0; i < threadCount; i++) {
+        t[i].join();
+    }
     for (int i = 0; i < threadCount; i++) {
         Force_Stretch += stretch[i];
         Force_Shear += shear[i];
         Force_Bend += bend[i];
-        Force_Gravity += gravity[i];
     }
     return Force_Stretch + Force_Shear + Force_Bend + Force_Gravity;
 }
@@ -383,19 +375,15 @@ void Simulation::computeForceHelper(
         int endRow,
         VectorXd* Force_Stretch,
         VectorXd* Force_Shear,
-        VectorXd* Force_Bend,
-        VectorXd* Force_Gravity) const {
+        VectorXd* Force_Bend) const {
     Force_Stretch->resize(numPoints);
     Force_Shear->resize(numPoints);
     Force_Bend->resize(numPoints);
-    Force_Gravity->resize(numPoints);
 
     Force_Stretch->setZero();
     Force_Shear->setZero();
     Force_Bend->setZero();
-    Force_Gravity->setZero();
 
-    VectorXd massVec = g_cloth->getMassVector();
     auto F = g_cloth->F;
     auto V = g_cloth->V;
     auto Pos = g_cloth->Pos;
@@ -538,11 +526,6 @@ void Simulation::computeForceHelper(
             }
         }
     }
-    if (F_GRAV) {
-        for (int i = 1; i < numPoints; i+=3) {
-            (*Force_Gravity)[i] += -grav * massVec[i / 3];
-        }
-    }
 }
 
 MatrixXd Simulation::computeDF(VectorXd q) {
@@ -565,14 +548,8 @@ MatrixXd Simulation::computeDF(VectorXd q) {
             &bend[i]
         );
     }
-    int doneThreads = 0;
-    while (doneThreads != threadCount) {
-        for (int i = 0; i < threadCount; i++) {
-            if (t[i].joinable()) {
-                t[i].join();
-                doneThreads++;
-            }
-        }
+    for (int i = 0; i < threadCount; i++) {
+        t[i].join();
     }
     MatrixXd df_stretch(q.size(), q.size());
     MatrixXd df_shear(q.size(), q.size());

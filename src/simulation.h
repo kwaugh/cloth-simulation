@@ -34,8 +34,7 @@ public:
         int endRow,
         VectorXd* Force_Stretch,
         VectorXd* Force_Shear,
-        VectorXd* Force_Bend,
-        VectorXd* Force_Gravity
+        VectorXd* Force_Bend
     ) const;
     MatrixXd computeDF(VectorXd q);
     void computeDFHelper(
