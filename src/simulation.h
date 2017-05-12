@@ -76,7 +76,7 @@ public:
     bool VIS_COLLISIONS = false;
 
     bool paused     = false;
-    int vCloth      = 1;
+    int vCloth      = 4;
     double scale    = 2000;
     double clothThickness = 0.01 * scale;
 

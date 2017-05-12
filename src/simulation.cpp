@@ -30,10 +30,10 @@ void Simulation::reset() {
             Object::ObjectType::Sphere));
     totalVertices += objects[objects.size() - 1]->V.rows();
     objects.push_back(make_shared<Object>("../src/resources/box.node",
-            "../src/resources/box.ele", scale / 4.0, Vector3d(0, -scale / 3, 0), totalVertices,
+            "../src/resources/box.ele", scale / 4.0, Vector3d(0, -scale / 4 - 20, 0), totalVertices,
             Object::ObjectType::Box));
     totalVertices += objects[objects.size() - 1]->V.rows();
-    paused = true;
+    //paused = true;
     stepCount = 0;
     timeStep = 0.003;
 }

@@ -6,8 +6,12 @@
 using namespace std;
 
 void doSimulation(Simulation* sim) {
-    while (true)
+    //while (true) {
+    for (int i = 0; i < 1000; i++) {
+        //if (i % 1000 == 0) cout << "stepCount: " << i << endl;
         sim->takeSimulationStep();
+    }
+    exit(1);
 }
 
 int main() {
