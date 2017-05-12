@@ -152,7 +152,6 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     q.resize(Pos.rows() * Pos.cols());
     v.resize(Pos.rows() * Pos.cols());
     qprev.resize(Pos.rows() * Pos.cols());
-    #pragma omp parallel for
     for (int i = 0; i < Pos.rows(); i++) {
         q[3*i] = Pos(i, 0);
         q[3*i + 1] = Pos(i, 1);
@@ -168,7 +167,6 @@ void Cloth::buildConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
     }
 }
 void Cloth::unpackConfiguration(VectorXd &q, VectorXd &v, VectorXd &qprev) {
-    #pragma omp parallel for
     for (int i = 0; i < Pos.rows(); i++) {
         /* if (i == 1 || i == 0) continue; // fixed verts */
         Pos(i, 0) = q[3*i];

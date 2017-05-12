@@ -59,8 +59,8 @@ void Object::generate_libigl_geometry(MatrixX3d& Verts, MatrixX3i& Faces) const 
     Faces.block(oldFRows, 0, F.rows(), 3) = F;
 }
 
-void Object::intersect(Vector3d p, int pIndex, vector<Collision>& collisions,
-        mutex& lock, double thickness) {
+void Object::intersect(Vector3d p, int pIndex, vector<Collision>* collisions,
+        double thickness) {
     switch (type) {
         case Sphere: {
             /* cout << "startPos: " << startPos << endl; */
@@ -73,9 +73,7 @@ void Object::intersect(Vector3d p, int pIndex, vector<Collision>& collisions,
             c.x0 = p;
             c.a = 1;
             c.b = c.c = 0;
-            lock.lock(); {
-                collisions.push_back(c);
-            } lock.unlock();
+            collisions->push_back(c);
             break;
         }
         case Box: {
@@ -105,9 +103,7 @@ void Object::intersect(Vector3d p, int pIndex, vector<Collision>& collisions,
             c.x0 = p;
             c.a = 1;
             c.b = c.c = 0;
-            lock.lock(); {
-                collisions.push_back(c);
-            } lock.unlock();
+            collisions->push_back(c);
             break;
         }
     } 
