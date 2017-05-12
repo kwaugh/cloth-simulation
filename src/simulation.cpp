@@ -14,6 +14,7 @@ using namespace Eigen;
 
 Simulation::Simulation(mutex& renderLock) : renderLock(renderLock) {
     threadCount = std::max(std::thread::hardware_concurrency(), (unsigned)1);
+    threadCount = std::min(threadCount, 10); // don't use hyperthreads
     cout << "threadCount: " << threadCount << endl;
     reset();
 }
