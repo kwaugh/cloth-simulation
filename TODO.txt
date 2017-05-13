@@ -4,10 +4,10 @@ x cloth held by two opposite corners
 x held by centerpoint
 x cloth onto sphere
 x cloth onto box
-- cloth between two boxes
+x cloth between two boxes
 - cloth hitting another cloth
 - vertical cloth onto a box
 
 Some scenes with the collision color change on to visualize collisions
-    - cloth held by centerpoint
+    x cloth held by centerpoint
     - cloth hitting another cloth
