@@ -10,8 +10,10 @@
 #include "cloth.h"
 #include "object.h"
 #include "collision.h"
+#include "bvh.h"
 #include <memory>
 #include <mutex>
+#include <thread>
 
 using namespace Eigen;
 using namespace std;
@@ -26,9 +28,34 @@ public:
         vector<glm::uvec3>& obj_faces, vector<glm::vec4>& obj_normals);
     void generate_libigl_geometry(MatrixX3d&, MatrixX3i&, VectorXd&) const;
     VectorXd computeForce(VectorXd q);
+    void computeForceHelper(
+        int numPoints,
+        int startRow,
+        int endRow,
+        VectorXd* Force_Stretch,
+        VectorXd* Force_Shear,
+        VectorXd* Force_Bend
+    ) const;
     MatrixXd computeDF(VectorXd q);
+    void computeDFHelper(
+        int numPoints,
+        int startRow,
+        int endRow,
+        MatrixXd* df_stretch,
+        MatrixXd* df_shear,
+        MatrixXd* df_bend
+    ) const;
+
     void handleCollisions(VectorXd& q_cand, VectorXd& v_cand, VectorXd& qprev,
             VectorXd& vprev);
+    void clothClothCollision(vector<Collision>& collisions, BVHNode *root);
+    void clothClothCollisionHelper(
+        int startRow,
+        int endRow,
+        BVHNode* root,
+        vector<Collision>* collisions
+    );
+
     static const Eigen::Matrix3d S(const Eigen::Vector3d &v);
     static const Eigen::Vector3d S_s(const Eigen::Vector3d &v, int index);
     void reset();
@@ -61,6 +88,7 @@ public:
     vector<shared_ptr<Object>> objects;
     mutex lock;
     mutex& renderLock;
+    int threadCount;
 };
 
 #endif

@@ -25,7 +25,7 @@ class BVHNode {
         BVHNode(vector<Face> faces, double clothThickness);
         ~BVHNode();
 
-        void intersect(Vector3d p, int pIndex, vector<Collision>& collisions, mutex& lock);
+        void intersect(Vector3d p, int pIndex, vector<Collision>* collisions);
 };
 
 #endif
